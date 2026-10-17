@@ -1,0 +1,41 @@
+VINILI — prima versione dell’archivio interattivo
+=================================================
+
+COLLEGAMENTO GIÀ PREDISPOSTO
+Il file .env.local è già compilato con l’URL del progetto Supabase Vinili e con la publishable key fornita. È una chiave pubblica per l'app client, NON una service_role/secret key. Non inserire mai chiavi segrete nel browser.
+
+PRIMA DI USARE L'APP
+1. Apri il progetto Supabase Vinili: https://supabase.com/dashboard/project/hjjvoldkppbzpcvoheqh
+2. Vai in SQL Editor.
+3. Clicca New query.
+4. Apri il file supabase/fix_security_and_profiles.sql, copia tutto e incollalo nell'editor.
+5. Clicca Run. Lo script limita la lettura delle copie personali al loro proprietario, crea automaticamente il profilo per ogni nuovo utente e autorizza l’upload delle copertine soltanto nella cartella del proprio account.
+6. Verifica in Authentication > Providers che Email sia abilitato.
+7. In Storage controlla che esista il bucket pubblico `vinyl-covers`. La funzione copertina del modulo usa questo nome esatto.
+
+COME AVVIARE SUL COMPUTER (Windows)
+1. Installa Node.js LTS da https://nodejs.org/ se non è già installato.
+2. Estrai tutto lo ZIP in una cartella, ad esempio C:\\vinili-app.
+3. Apri la cartella, clicca sulla barra dell'indirizzo di Esplora file, scrivi cmd e premi Invio.
+4. Esegui in ordine:
+   npm install
+   npm run dev
+5. Apri nel browser l'indirizzo locale mostrato nel terminale (normalmente http://localhost:5173).
+
+FUNZIONI PRESENTI
+- Registrazione e accesso con email/password tramite Supabase Auth.
+- Catalogo condiviso con ricerca e filtri per genere e formato.
+- Inserimento album, artista, genere, stampa/edizione e copia personale.
+- Upload della copertina nel bucket `vinyl-covers`.
+- Collezione personale con condizioni, prezzo, valore stimato, data e note.
+- Scheda disco con le edizioni registrate e possibilità di aggiungerle alla propria collezione.
+- Valore stimato e conteggio della collezione.
+- Interfaccia responsive per computer e smartphone.
+
+IMPORTANTE SULLA PUBBLICAZIONE
+Questo progetto è una prima versione collegata al database già creato. Il repository GitHub indicato risulta accessibile in lettura ma non in scrittura dalla connessione attuale, perciò non ho potuto caricare io i file. Prima verifica l'app in locale; poi si può pubblicare su GitHub Pages o su un servizio statico. Per la pubblicazione web, imposta le variabili VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY nella configurazione di build del servizio scelto.
+
+NOTE DI SICUREZZA
+- Nel browser è usata solo la publishable key. Non inserire mai service_role o secret key.
+- La regola SQL in `fix_security_and_profiles.sql` è importante: applicala prima di usare l'app con amici.
+- Le tabelle condivise del catalogo al momento consentono agli utenti autenticati di aggiungere dati secondo le policy già impostate. Non sono incluse funzioni di modifica o cancellazione delle schede del catalogo.
