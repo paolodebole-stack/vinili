@@ -7,6 +7,7 @@ import {
   AlertCircle, RefreshCw
 } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from './supabase';
+import { parseCatalogFile, normalizeCatalogText } from './importCatalog';
 import './styles.css';
 
 const CONDITION_OPTIONS = ['Mint (M)', 'Near Mint (NM)', 'Very Good Plus (VG+)', 'Very Good (VG)', 'Good (G)', 'Poor (P)'];
@@ -155,6 +156,454 @@ function AddAlbumModal({ user, onClose, onSaved }) {
     </form></section></div>;
 }
 
+
+const IMPORT_FIELD_LABELS = [
+  ['artist', 'Artista'],
+  ['title', 'Titolo'],
+  ['year', 'Anno'],
+  ['genre', 'Genere'],
+  ['label', 'Etichetta'],
+  ['catalog_number', 'N. catalogo'],
+  ['format', 'Formato'],
+  ['country', 'Paese'],
+  ['edition', 'Mix / edizione']
+];
+const normalizeImportValue = (value) => normalizeCatalogText(value);
+const makeAlbumKey = (title, artist) => `${normalizeImportValue(title)}::${normalizeImportValue(artist)}`;
+const makeReleaseKey = (albumId, row) => JSON.stringify([
+  String(albumId),
+  normalizeImportValue(row.format || 'Vinile'),
+  normalizeImportValue(row.label),
+  normalizeImportValue(row.catalog_number),
+  normalizeImportValue(row.release_year),
+  normalizeImportValue(row.country),
+  normalizeImportValue(row.edition)
+]);
+const toImportMoney = (value) => {
+  if (value === '' || value == null) return null;
+  const number = Number(String(value).replace(',', '.'));
+  return Number.isFinite(number) && number >= 0 ? number : null;
+};
+const parseImportDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? value : null;
+
+function ImportCatalogModal({ user, currentAlbums, onClose, onImported }) {
+  const [file, setFile] = useState(null);
+  const [rows, setRows] = useState([]);
+  const [destination, setDestination] = useState('catalog');
+  const [parsing, setParsing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [error, setError] = useState('');
+  const [stage, setStage] = useState('select');
+  const [progress, setProgress] = useState('');
+  const [result, setResult] = useState(null);
+
+  async function chooseFile(nextFile) {
+    if (!nextFile) return;
+    setFile(nextFile);
+    setError('');
+    setRows([]);
+    setResult(null);
+    setParsing(true);
+    try {
+      const parsed = await parseCatalogFile(nextFile);
+      if (!parsed.length) throw new Error('Non ho trovato righe di catalogo. Controlla che il documento contenga testo o una tabella leggibile.');
+      const missingList = /mancant|wishlist|da.?comprare|da.?acquist|ricercat|wanted/i.test(nextFile.name);
+      const nextDestination = missingList ? 'catalog' : 'collection';
+      setDestination(nextDestination);
+
+      const seen = new Set();
+      const prepared = parsed.map((record, index) => {
+        const title = record.title || '';
+        const artist = record.artist || '';
+        const releaseSignature = [
+          normalizeImportValue(record.format || 'Vinile'),
+          normalizeImportValue(record.label),
+          normalizeImportValue(record.catalog_number),
+          normalizeImportValue(record.release_year),
+          normalizeImportValue(record.country),
+          normalizeImportValue(record.edition)
+        ].join('|');
+        const duplicateKey = `${makeAlbumKey(title, artist)}::${releaseSignature}`;
+        const duplicateInFile = seen.has(duplicateKey);
+        seen.add(duplicateKey);
+
+        let existingAlbum = null;
+        if (title) {
+          existingAlbum = (currentAlbums || []).find((album) => {
+            const sameTitle = normalizeImportValue(album.title) === normalizeImportValue(title);
+            if (!sameTitle) return false;
+            const albumArtists = (album.artistNames || (album.album_artists || []).map((link) => link.artists?.name).filter(Boolean)).map(normalizeImportValue);
+            return artist ? albumArtists.includes(normalizeImportValue(artist)) : albumArtists.length === 0 || albumArtists.length === 1;
+          }) || null;
+        }
+        const existingRelease = Boolean(existingAlbum?.releases?.some((release) =>
+          makeReleaseKey(existingAlbum.id, {
+            format: release.format, label: release.label, catalog_number: release.catalog_number,
+            release_year: release.release_year, country: release.country, edition: release.edition
+          }) === makeReleaseKey(existingAlbum.id, record)
+        ));
+        const alreadyOwned = Boolean(existingAlbum?.releases?.some((release) =>
+          makeReleaseKey(existingAlbum.id, {
+            format: release.format, label: release.label, catalog_number: release.catalog_number,
+            release_year: release.release_year, country: release.country, edition: release.edition
+          }) === makeReleaseKey(existingAlbum.id, record) &&
+          (release.collection_items || []).some((item) => item.owner_id === user.id)
+        ));
+        return {
+          ...record,
+          _rowId: `${record._rowId || 'row'}-${index}`,
+          _selected: !duplicateInFile && !alreadyOwned && !(nextDestination === 'catalog' && existingRelease),
+          _duplicateInFile: duplicateInFile,
+          _existingAlbum: Boolean(existingAlbum),
+          _existingRelease: existingRelease,
+          _alreadyOwned: alreadyOwned,
+          _needsReview: !record.title || !record.artist || (record._confidence || 0) < 3
+        };
+      });
+      setRows(prepared);
+      setStage('preview');
+    } catch (err) {
+      setError(err?.message || 'Impossibile leggere il file. Prova con un altro formato.');
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  function changeDestination(nextDestination) {
+    setDestination(nextDestination);
+    setRows((old) => old.map((row) => {
+      // Restore the suggested default only for duplicate cases; manual choices
+      // for ordinary records remain untouched.
+      const shouldSkip = row._duplicateInFile || row._alreadyOwned ||
+        (nextDestination === 'catalog' && row._existingRelease);
+      const newlyEligibleCopy = nextDestination === 'collection' && row._existingRelease &&
+        !row._alreadyOwned && !row._duplicateInFile;
+      return { ...row, _selected: shouldSkip ? false : (newlyEligibleCopy ? true : row._selected) };
+    }));
+  }
+
+  function editRow(rowId, field, value) {
+    setRows((old) => old.map((row) => row._rowId === rowId
+      ? { ...row, [field]: value, _needsReview: !String(field === 'artist' ? value : (row.artist || '')).trim() || !String(field === 'title' ? value : (row.title || '')).trim() }
+      : row));
+  }
+
+  function selectAll(checked) {
+    setRows((old) => old.map((row) => ({
+      ...row,
+      _selected: checked && !row._alreadyOwned && !row._duplicateInFile &&
+        !(destination === 'catalog' && row._existingRelease)
+    })));
+  }
+
+  async function importSelected() {
+    const selectedRows = rows.filter((row) => row._selected && String(row.title || '').trim());
+    if (!selectedRows.length) {
+      setError('Seleziona almeno una riga con un titolo.');
+      return;
+    }
+    setImporting(true);
+    setError('');
+    setProgress('Leggo il catalogo già presente per evitare doppioni…');
+    const counts = { albumsAdded: 0, releasesAdded: 0, copiesAdded: 0, skipped: rows.length - selectedRows.length };
+    try {
+      const [
+        albumsResult,
+        artistsResult,
+        genresResult
+      ] = await Promise.all([
+        supabase.from('albums').select('id,title,release_year,cover_url,description,genres(id,name),album_artists(artist_role,artists(id,name,country)),releases(id,format,label,catalog_number,release_year,country,edition,collection_items(id,owner_id,vinyl_condition,sleeve_condition,purchase_price,estimated_value,purchase_date,notes))').order('title'),
+        supabase.from('artists').select('id,name'),
+        supabase.from('genres').select('id,name')
+      ]);
+      for (const response of [albumsResult, artistsResult, genresResult]) if (response.error) throw response.error;
+      const albumsData = (albumsResult.data || []).map((album) => ({
+        ...album,
+        artistNames: (album.album_artists || []).map((link) => link.artists?.name).filter(Boolean),
+        artistIds: (album.album_artists || []).map((link) => link.artists?.id).filter(Boolean),
+        releases: album.releases || []
+      }));
+
+      const artistMap = new Map((artistsResult.data || []).map((artist) => [normalizeImportValue(artist.name), artist.id]));
+      const genreMap = new Map((genresResult.data || []).map((genre) => [normalizeImportValue(genre.name), genre.id]));
+
+      const uniqueArtists = [...new Map(selectedRows.filter((row) => row.artist.trim()).map((row) => [
+        normalizeImportValue(row.artist), row.artist.trim()
+      ])).entries()];
+      const missingArtists = uniqueArtists.filter(([key]) => !artistMap.has(key)).map(([, name]) => ({ name }));
+      if (missingArtists.length) {
+        setProgress(`Aggiungo ${missingArtists.length} artisti al catalogo…`);
+        const created = await supabase.from('artists').insert(missingArtists).select('id,name');
+        if (created.error) throw created.error;
+        for (const artist of (created.data || [])) artistMap.set(normalizeImportValue(artist.name), artist.id);
+      }
+
+      const uniqueGenres = [...new Map(selectedRows.filter((row) => row.genre.trim()).map((row) => [
+        normalizeImportValue(row.genre), row.genre.trim()
+      ])).entries()];
+      const missingGenres = uniqueGenres.filter(([key]) => !genreMap.has(key)).map(([, name]) => ({ name }));
+      if (missingGenres.length) {
+        setProgress(`Aggiungo ${missingGenres.length} generi al catalogo…`);
+        const created = await supabase.from('genres').insert(missingGenres).select('id,name');
+        if (created.error) throw created.error;
+        for (const genre of (created.data || [])) genreMap.set(normalizeImportValue(genre.name), genre.id);
+      }
+
+      const albumKeyMap = new Map();
+      for (const album of albumsData) {
+        for (const artistName of album.artistNames) {
+          const key = makeAlbumKey(album.title, artistName);
+          if (!albumKeyMap.has(key)) albumKeyMap.set(key, album);
+        }
+        if (!album.artistNames.length) {
+          const key = makeAlbumKey(album.title, '');
+          if (!albumKeyMap.has(key)) albumKeyMap.set(key, album);
+        }
+      }
+
+      const recordToAlbumKey = new Map();
+      const newAlbumGroups = new Map();
+      for (const row of selectedRows) {
+        const key = makeAlbumKey(row.title, row.artist);
+        recordToAlbumKey.set(row._rowId, key);
+        if (!albumKeyMap.has(key) && !newAlbumGroups.has(key)) {
+          newAlbumGroups.set(key, {
+            title: row.title.trim(),
+            release_year: row.year ? Number(row.year) : null,
+            genre_id: row.genre ? genreMap.get(normalizeImportValue(row.genre)) || null : null,
+            cover_url: row.cover_url || null,
+            description: null,
+            _artist: row.artist.trim()
+          });
+        } else if (newAlbumGroups.has(key)) {
+          const group = newAlbumGroups.get(key);
+          if (!group.release_year && row.year) group.release_year = Number(row.year);
+          if (!group.genre_id && row.genre) group.genre_id = genreMap.get(normalizeImportValue(row.genre)) || null;
+          if (!group.cover_url && row.cover_url) group.cover_url = row.cover_url;
+        }
+      }
+
+      if (newAlbumGroups.size) {
+        setProgress(`Creo ${newAlbumGroups.size} nuove schede album…`);
+        const groups = [...newAlbumGroups.entries()];
+        const inserted = await supabase.from('albums').insert(groups.map(([, group]) => ({
+          title: group.title,
+          release_year: group.release_year,
+          genre_id: group.genre_id,
+          cover_url: group.cover_url,
+          description: group.description
+        }))).select('id,title,release_year,genre_id,cover_url,description');
+        if (inserted.error) throw inserted.error;
+        if ((inserted.data || []).length !== groups.length) throw new Error('Il database non ha restituito tutte le schede album create. Controlla il catalogo prima di ripetere l’importazione.');
+        // PostgREST returns rows in the same order as the insert values.
+        inserted.data.forEach((album, index) => {
+          const [key, group] = groups[index];
+          albumKeyMap.set(key, { ...album, artistNames: [], artistIds: [], releases: [] });
+          counts.albumsAdded++;
+        });
+      }
+
+      const resolvedRows = selectedRows.map((row) => ({
+        ...row,
+        albumKey: recordToAlbumKey.get(row._rowId),
+        album: albumKeyMap.get(recordToAlbumKey.get(row._rowId)),
+        artistId: row.artist.trim() ? artistMap.get(normalizeImportValue(row.artist)) : null,
+        genreId: row.genre.trim() ? genreMap.get(normalizeImportValue(row.genre)) || null : null
+      })).filter((row) => row.album?.id);
+
+      const links = [];
+      const linkKeys = new Set();
+      for (const row of resolvedRows) {
+        if (!row.artistId) continue;
+        const key = `${row.album.id}:${row.artistId}`;
+        const alreadyLinked = (row.album.artistIds || []).includes(row.artistId);
+        if (!alreadyLinked && !linkKeys.has(key)) {
+          links.push({ album_id: row.album.id, artist_id: row.artistId, artist_role: 'main' });
+          linkKeys.add(key);
+        }
+      }
+      if (links.length) {
+        setProgress('Collego album e artisti…');
+        const linked = await supabase.from('album_artists').insert(links);
+        if (linked.error) throw linked.error;
+      }
+
+      const releaseMap = new Map();
+      for (const album of albumsData) {
+        for (const release of album.releases) {
+          releaseMap.set(makeReleaseKey(album.id, release), { ...release, album_id: album.id });
+        }
+      }
+      const newReleaseGroups = new Map();
+      for (const row of resolvedRows) {
+        const releaseKey = makeReleaseKey(row.album.id, row);
+        row.releaseKey = releaseKey;
+        if (!releaseMap.has(releaseKey) && !newReleaseGroups.has(releaseKey)) {
+          newReleaseGroups.set(releaseKey, {
+            album_id: row.album.id,
+            format: row.format.trim() || 'Vinile',
+            label: row.label.trim() || null,
+            catalog_number: row.catalog_number.trim() || null,
+            release_year: row.release_year ? Number(row.release_year) : null,
+            country: row.country.trim() || null,
+            edition: row.edition.trim() || null
+          });
+        }
+      }
+      if (newReleaseGroups.size) {
+        setProgress(`Registro ${newReleaseGroups.size} edizioni/stampe…`);
+        const groups = [...newReleaseGroups.entries()];
+        const inserted = await supabase.from('releases').insert(groups.map(([, release]) => release))
+          .select('id,album_id,format,label,catalog_number,release_year,country,edition');
+        if (inserted.error) throw inserted.error;
+        if ((inserted.data || []).length !== groups.length) throw new Error('Il database non ha restituito tutte le edizioni create. Controlla il catalogo prima di ripetere l’importazione.');
+        inserted.data.forEach((release, index) => {
+          const [key] = groups[index];
+          releaseMap.set(key, release);
+          counts.releasesAdded++;
+        });
+      }
+
+      const collectionRows = [];
+      const collectionReleaseIds = new Set();
+      if (destination === 'collection') {
+        for (const row of resolvedRows) {
+          const release = releaseMap.get(row.releaseKey);
+          if (!release || collectionReleaseIds.has(String(release.id))) continue;
+          collectionReleaseIds.add(String(release.id));
+          const existingRelease = albumsData.flatMap((album) => album.releases.map((item) => ({ ...item, album_id: album.id })))
+            .find((item) => makeReleaseKey(item.album_id, item) === row.releaseKey);
+          const alreadyOwned = (existingRelease?.collection_items || []).some((item) => item.owner_id === user.id);
+          if (alreadyOwned) { counts.skipped++; continue; }
+          collectionRows.push({
+            owner_id: user.id,
+            release_id: release.id,
+            vinyl_condition: row.vinyl_condition || null,
+            sleeve_condition: row.sleeve_condition || null,
+            purchase_price: toImportMoney(row.purchase_price),
+            estimated_value: toImportMoney(row.estimated_value),
+            purchase_date: parseImportDate(row.purchase_date),
+            notes: row.notes || null
+          });
+        }
+        if (collectionRows.length) {
+          setProgress(`Aggiungo ${collectionRows.length} copie alla tua collezione personale…`);
+          const copies = await supabase.from('collection_items').insert(collectionRows);
+          if (copies.error) throw copies.error;
+          counts.copiesAdded = collectionRows.length;
+        }
+      }
+
+      setResult(counts);
+      setStage('done');
+      onImported();
+    } catch (err) {
+      setError(friendlyError(err));
+      setProgress('');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  const selectedCount = rows.filter((row) => row._selected && String(row.title || '').trim()).length;
+  const duplicateCount = rows.filter((row) => row._duplicateInFile || row._existingRelease || row._alreadyOwned).length;
+  const reviewCount = rows.filter((row) => row._needsReview).length;
+
+  return <div className="modal-backdrop import-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !importing) onClose(); }}>
+    <section className="modal-card import-modal">
+      <header className="modal-head import-head">
+        <div>
+          <span className="eyebrow">IMPORTAZIONE INTELLIGENTE</span>
+          <h2>Importa il tuo catalogo</h2>
+          <p className="muted">Leggo il documento, riconosco i campi e ti faccio verificare i dati prima di salvarli.</p>
+        </div>
+        <button className="icon-btn" onClick={onClose} disabled={importing} aria-label="Chiudi"><X size={20}/></button>
+      </header>
+
+      <div className="import-body">
+        {stage === 'select' && <div className="import-upload-area">
+          <div className="import-drop-icon"><Upload size={28}/></div>
+          <h3>Da che file partiamo?</h3>
+          <p>Puoi caricare un Word con tabella o elenco, un Excel, CSV, TXT oppure un PDF con testo selezionabile.</p>
+          <label className="primary-btn import-file-btn">
+            <Upload size={17}/> Scegli il file
+            <input type="file" accept=".docx,.xlsx,.xls,.xlsm,.ods,.csv,.tsv,.txt,.pdf,.doc" onChange={(event) => chooseFile(event.target.files?.[0])} disabled={parsing}/>
+          </label>
+          {parsing && <div className="import-progress"><LoaderCircle className="spin" size={18}/><span>Analizzo il documento e cerco intestazioni, colonne e righe…</span></div>}
+          <div className="import-format-list"><span>WORD .DOCX</span><span>EXCEL</span><span>CSV / TXT</span><span>PDF TESTUALE</span></div>
+        </div>}
+
+        {stage === 'preview' && <>
+          <div className="import-file-line">
+            <div className="import-file-icon"><Disc3 size={20}/></div>
+            <div className="import-file-meta"><b>{file?.name}</b><span>{rows.length} righe individuate · anteprima modificabile</span></div>
+            <button className="secondary-btn import-change-file" onClick={() => { setStage('select'); setRows([]); setError(''); setFile(null); }}>Cambia file</button>
+          </div>
+          {file && /mancant|wishlist|da.?comprare|da.?acquist|ricercat|wanted/i.test(file.name) && <div className="import-advice"><AlertCircle size={17}/><span>Il nome del file sembra indicare dischi mancanti o da cercare. Per sicurezza partirai da <b>Solo catalogo condiviso</b>: non li segnerò come già posseduti.</span></div>}
+          <div className="import-destination">
+            <label htmlFor="import-destination">Dove inserire i dischi?</label>
+            <select id="import-destination" value={destination} onChange={(event) => changeDestination(event.target.value)}>
+              <option value="catalog">Solo catalogo condiviso (non risultano posseduti)</option>
+              <option value="collection">Catalogo condiviso + la mia collezione personale</option>
+            </select>
+          </div>
+          <div className="import-summary-grid">
+            <div><b>{rows.length}</b><span>righe lette</span></div>
+            <div><b>{selectedCount}</b><span>selezionate</span></div>
+            <div><b>{duplicateCount}</b><span>possibili doppioni</span></div>
+            <div><b>{reviewCount}</b><span>da verificare</span></div>
+          </div>
+          <div className="import-select-tools">
+            <button className="text-btn" onClick={() => selectAll(true)}>Seleziona righe importabili</button>
+            <button className="text-btn" onClick={() => selectAll(false)}>Deseleziona tutte</button>
+          </div>
+          <div className="import-table-wrap">
+            <table className="import-table">
+              <thead><tr><th>Importa</th>{IMPORT_FIELD_LABELS.map(([field, label]) => <th key={field}>{label}</th>)}<th>Controllo</th></tr></thead>
+              <tbody>{rows.map((row) => <tr key={row._rowId} className={`${row._needsReview ? 'needs-review' : ''} ${row._selected ? 'is-selected' : ''}`}>
+                <td><input aria-label={`Importa riga ${row._sourceLine || row._rowId}`} type="checkbox" checked={Boolean(row._selected)} onChange={(event) => editRow(row._rowId, '_selected', event.target.checked)}/></td>
+                {IMPORT_FIELD_LABELS.map(([field, label]) => <td key={field}><input aria-label={`${label}, riga ${row._sourceLine || row._rowId}`} value={row[field] || ''} onChange={(event) => editRow(row._rowId, field, event.target.value)} /></td>)}
+                <td><div className="import-statuses">
+                  {row._duplicateInFile && <span className="import-tag duplicate">Ripetuto nel file</span>}
+                  {row._alreadyOwned && <span className="import-tag duplicate">Già posseduto</span>}
+                  {!row._alreadyOwned && row._existingRelease && <span className="import-tag duplicate">Edizione presente</span>}
+                  {row._needsReview && <span className="import-tag review">Verifica dati</span>}
+                  {!row._duplicateInFile && !row._existingRelease && !row._needsReview && <span className="import-tag good">Pronto</span>}
+                </div></td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+          <p className="import-footnote">I campi restano modificabili. Le righe incomplete sono evidenziate: controllale prima di importare. L’importazione non ricerca automaticamente le copertine e non inventa i dati mancanti.</p>
+        </>}
+
+        {stage === 'done' && result && <div className="import-finished">
+          <div className="import-success-icon"><Check size={28}/></div>
+          <h3>Importazione completata</h3>
+          <p>Ho elaborato il file e aggiornato l’archivio.</p>
+          <div className="import-result-grid">
+            <div><b>{result.albumsAdded}</b><span>nuovi album</span></div>
+            <div><b>{result.releasesAdded}</b><span>nuove edizioni</span></div>
+            {destination === 'collection' && <div><b>{result.copiesAdded}</b><span>copie personali</span></div>}
+            <div><b>{result.skipped}</b><span>righe non importate / saltate</span></div>
+          </div>
+          <button className="primary-btn" onClick={onClose}>Torna al catalogo</button>
+        </div>}
+
+        {importing && <div className="import-working"><LoaderCircle className="spin" size={22}/><div><b>Sto importando i dati…</b><span>{progress || 'Non chiudere questa finestra durante l’operazione.'}</span></div></div>}
+        {error && <div className="notice error import-error"><AlertCircle size={17}/><span>{error}</span></div>}
+      </div>
+
+      {stage === 'preview' && <footer className="modal-actions import-actions">
+        <button type="button" className="secondary-btn" disabled={importing} onClick={onClose}>Annulla</button>
+        <button type="button" className="primary-btn" disabled={importing || selectedCount === 0} onClick={importSelected}>
+          {importing ? <LoaderCircle className="spin" size={17}/> : <Upload size={17}/>}
+          Importa {selectedCount} righe
+        </button>
+      </footer>}
+    </section>
+  </div>;
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -170,6 +619,7 @@ function App() {
   const [formatFilter, setFormatFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -260,7 +710,7 @@ function App() {
 
     <main className="main-content"><header className="topbar"><div className="crumb"><span>VINILI</span><span className="crumb-slash">/</span><b>{isCollection?'LA MIA COLLEZIONE':'CATALOGO MUSICALE'}</b></div><div className="top-actions"><span className="online-dot"/> ARCHIVIO SINCRONIZZATO <button className="avatar avatar-small" onClick={signOut} title="Esci">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</button></div></header>
       <section className="page-wrap">
-        <div className="welcome-row"><div><span className="eyebrow">{isCollection?'IL TUO TESORO PERSONALE':'ESPLORA, CERCA, RICORDA'}</span><h1>{isCollection?'La tua collezione':'Il catalogo dei vinili'}<span className="title-period">.</span></h1><p className="page-subtitle">{isCollection?'Ogni copia racconta qualcosa. Qui c’è la tua storia musicale.':'Un archivio condiviso per scoprire album e custodire le tue copie.'}</p></div><button className="primary-btn add-btn" onClick={()=>setShowAdd(true)}><Plus size={18}/> Aggiungi vinile</button></div>
+        <div className="welcome-row"><div><span className="eyebrow">{isCollection?'IL TUO TESORO PERSONALE':'ESPLORA, CERCA, RICORDA'}</span><h1>{isCollection?'La tua collezione':'Il catalogo dei vinili'}<span className="title-period">.</span></h1><p className="page-subtitle">{isCollection?'Ogni copia racconta qualcosa. Qui c’è la tua storia musicale.':'Un archivio condiviso per scoprire album e custodire le tue copie.'}</p></div><div className="welcome-actions"><button className="secondary-btn import-launch-btn" onClick={()=>setShowImport(true)}><Upload size={17}/> Importa catalogo</button><button className="primary-btn add-btn" onClick={()=>setShowAdd(true)}><Plus size={18}/> Aggiungi vinile</button></div></div>
         <div className="stats-grid"><div className="stat-card"><div className="stat-top"><span>DISCHI A CATALOGO</span><Library size={18}/></div><div className="stat-value">{albums.length.toLocaleString('it-IT')}<span className="stat-caption">album</span></div><div className="stat-foot">Archivio condiviso</div></div><div className="stat-card"><div className="stat-top"><span>ARTISTI</span><Users size={18}/></div><div className="stat-value">{artists.length.toLocaleString('it-IT')}<span className="stat-caption">artisti</span></div><div className="stat-foot">Voci della tua musica</div></div><div className="stat-card"><div className="stat-top"><span>LA MIA COLLEZIONE</span><Disc3 size={18}/></div><div className="stat-value">{myItems.length.toLocaleString('it-IT')}<span className="stat-caption">copie</span></div><div className="stat-foot">Dischi che possiedi</div></div><div className="stat-card stat-highlight"><div className="stat-top"><span>VALORE STIMATO</span><Wallet size={18}/></div><div className="stat-value money-value">{formatMoney(collectionValue)}</div><div className="stat-foot">Somma dei valori inseriti</div></div></div>
         <section className="catalog-section"><div className="catalog-head"><div><h2>{isCollection?'Le tue copie':'Esplora i dischi'} <span className="result-count">{listing.length}</span></h2><p>{isCollection?'Edizioni e dettagli della tua collezione':'Cerca un titolo, un artista, un anno o un’etichetta.'}</p></div><div className="catalog-tools"><label className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cerca nel catalogo…"/><kbd>⌘ K</kbd>{query&&<button onClick={()=>setQuery('')} aria-label="Pulisci ricerca"><X size={15}/></button>}</label><button className={`filter-btn ${showFilters?'selected':''}`} onClick={()=>setShowFilters(s=>!s)}><SlidersHorizontal size={17}/> Filtri</button></div></div>
           {showFilters && !isCollection && <div className="filter-panel"><label>Genere<select value={genreFilter} onChange={e=>setGenreFilter(e.target.value)}><option value="all">Tutti i generi</option>{genres.map(g=><option key={g.id} value={g.name}>{g.name}</option>)}</select></label><label>Formato<select value={formatFilter} onChange={e=>setFormatFilter(e.target.value)}><option value="all">Tutti i formati</option>{formats.map(f=><option key={f} value={f}>{f}</option>)}</select></label><label className="check-filter"><input type="checkbox" checked={showMineOnly} onChange={e=>setShowMineOnly(e.target.checked)}/> Solo album che possiedo</label><button className="text-btn" onClick={()=>{setGenreFilter('all');setFormatFilter('all');setShowMineOnly(false)}}>Azzera filtri</button></div>}
@@ -270,6 +720,7 @@ function App() {
         </section><footer className="page-footer"><span>VINILI<span className="brand-dot">.</span> — IL PIACERE DI COLLEZIONARE</span><span>CATALOGO CONDIVISO · COLLEZIONI PERSONALI</span></footer>
       </section>
     </main>
+    {showImport&&<ImportCatalogModal user={session.user} currentAlbums={albums} onClose={()=>setShowImport(false)} onImported={()=>{setSuccessMessage('Importazione completata. Il catalogo è stato aggiornato.');loadData();}}/>}
     {showAdd&&<AddAlbumModal user={session.user} onClose={()=>setShowAdd(false)} onSaved={()=>{setSuccessMessage('Vinile aggiunto correttamente.');loadData();}}/>}
     {selectedAlbum&&<AlbumDetails album={selectedAlbum} user={session.user} onClose={()=>setSelectedAlbum(null)} onChanged={()=>{setSelectedAlbum(null);loadData();}}/>}
   </div>;
