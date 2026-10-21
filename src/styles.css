@@ -134,3 +134,99 @@
 .cover-preview-description span{font-size:10px;color:#92968a;line-height:1.5;}
 .cover-manager-actions{position:sticky;bottom:0;background:#1b1d1a;padding:15px 25px 20px;z-index:3;}
 @media(max-width:700px){.cover-modal-backdrop{padding:0;align-items:flex-end;}.cover-manager-modal{width:100%;max-height:96vh;border-radius:15px 15px 0 0;border-bottom:0;}.cover-manager-body{padding:15px 16px 8px;}.cover-manager-head{padding:17px 16px 14px;}.cover-manager-head h2{font-size:24px;}.cover-search-form{flex-direction:column;}.cover-search-form .primary-btn{min-height:40px;}.cover-results{grid-template-columns:repeat(2,minmax(0,1fr));max-height:260px;gap:7px;}.cover-result{align-items:flex-start;gap:7px;padding:7px;}.cover-result>img{width:45px;height:45px;}.cover-result-info b{font-size:9px;}.cover-result-info span,.cover-result-info small{font-size:8px;}.cover-preview-image{width:84px;height:84px;}.cover-manager-actions{padding:13px 16px calc(17px + env(safe-area-inset-bottom));}}
+
+/* VINILI v1.3.0 — catalogo modificabile, scambi e indicatore versione */
+.app-version{position:fixed;left:254px;bottom:8px;z-index:20;padding:5px 8px;border:1px solid #30332e;border-radius:7px;background:#171917eF;color:#8e9187;font:9px 'DM Mono',monospace;letter-spacing:.04em;pointer-events:none;box-shadow:0 3px 12px #0003}
+.view-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line);border-radius:8px;background:#171917;flex-shrink:0}
+.view-switch button{border:0;border-radius:5px;padding:8px 10px;background:transparent;color:var(--muted);font-size:10px;font-weight:600}
+.view-switch button.selected{background:#3a362b;color:var(--gold-light)}
+.catalog-table-wrap{width:100%;overflow:auto;border:1px solid var(--line);border-radius:12px;background:#191b18}
+.catalog-table{width:100%;min-width:850px;border-collapse:separate;border-spacing:0;text-align:left}
+.catalog-table th{position:sticky;top:0;z-index:1;padding:13px 12px;background:#22241f;border-bottom:1px solid #3a3d34;color:#919587;font:9px 'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.catalog-table td{padding:11px 12px;border-bottom:1px solid #2c2f29;color:#d9d8cf;font-size:11px;vertical-align:middle}
+.catalog-table tbody tr:last-child td{border-bottom:0}
+.catalog-table tbody tr:hover td{background:#20221e}
+.catalog-table td:nth-child(2)>b{display:block;max-width:300px;color:#f0eadf;font-size:12px;line-height:1.45}
+.table-subtitle{display:block;margin-top:4px;color:#96998e;font-size:10px;max-width:300px;overflow-wrap:anywhere}
+.table-cover{width:43px;height:43px;overflow:hidden;border-radius:5px;background:#22241f;border:1px solid #383b33}
+.table-cover>img{display:block;width:100%;height:100%;object-fit:cover}
+.table-cover .cover-placeholder{width:100%;height:100%;min-height:unset}
+.table-cover .cover-placeholder>span{display:none}
+.table-release-cell{display:grid;gap:5px;min-width:125px;max-width:250px}
+.table-release-cell span{color:#a3a598;font-size:10px;line-height:1.4}
+.table-actions{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.table-edit-btn{padding:8px 10px;min-height:32px;font-size:10px}
+.catalog-detail-edit-button{margin:8px 0 2px}
+.catalog-edit-modal{max-width:760px;max-height:calc(100vh - 28px);overflow:auto}
+.catalog-edit-modal .modal-head{position:sticky;top:0;z-index:4;background:#1b1d1a}
+.catalog-edit-modal .modal-head h2{font:500 27px 'Playfair Display',serif;margin:8px 0 5px}
+.catalog-edit-modal .album-form{padding:0 24px 20px}
+.catalog-edit-modal .modal-head{padding:22px 24px 13px}
+.catalog-edit-modal label small{display:block;margin-top:5px;color:#919487;font-size:9px;line-height:1.5}
+.trade-page{display:grid;gap:21px}
+.trade-welcome{margin-bottom:0;align-items:center}
+.trade-welcome h1{font-size:clamp(29px,4vw,42px)}
+.share-panel{display:flex;align-items:center;gap:14px;padding:17px;border:1px solid #51442d;background:linear-gradient(100deg,#29271f,#1a1c19);border-radius:12px}
+.share-icon{width:42px;height:42px;flex-shrink:0;display:grid;place-items:center;color:var(--gold);border:1px solid #51442d;border-radius:10px;background:#322d22}
+.share-copy{display:grid;gap:5px;flex:1;min-width:0}
+.share-copy b{font-size:12px;color:#e9e4d7}
+.share-copy span{font-size:10px;line-height:1.65;color:#9b9d91;max-width:710px}
+.share-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 12px;border:1px solid #4a4d42;border-radius:8px;background:#20221e;color:#d5d4ca;font-size:10px;font-weight:600;white-space:nowrap}
+.share-toggle.enabled{background:#2b3529;border-color:#5c7956;color:#d1e4c6}
+.trade-catalog-section,.trade-offers-section{margin-top:0}
+.trade-search{min-width:min(330px,40%)}
+.trade-record-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.trade-record-card{display:flex;gap:14px;min-width:0;padding:12px;border:1px solid #34372f;border-radius:11px;background:#1b1d1a}
+.trade-record-cover{width:105px;height:105px;flex-shrink:0;overflow:hidden;border:1px solid #393c33;border-radius:6px;background:#20221e}
+.trade-record-cover>img{width:100%;height:100%;object-fit:cover;display:block}
+.trade-record-cover .cover-placeholder{width:100%;height:100%;min-height:unset}
+.trade-record-details{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;flex:1}
+.trade-record-details .album-genre{font-size:9px;overflow-wrap:anywhere}
+.trade-record-details h3{margin:0;color:#eee8dc;font:500 17px/1.3 'Playfair Display',serif;overflow-wrap:anywhere}
+.trade-record-details p{margin:0;color:#b0b2a6;font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.trade-record-meta{color:#878b80;font-size:9px;line-height:1.5;overflow-wrap:anywhere}
+.trade-record-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin-top:auto;padding-top:6px}
+.trade-record-bottom>span{color:#a4a797;font-size:9px}
+.trade-propose-btn{padding:8px 9px;min-height:30px;font-size:9px;white-space:nowrap}
+.trade-offer-list{display:grid;gap:12px}
+.trade-offer-card{padding:16px;border:1px solid #35382f;border-radius:12px;background:#1a1c19;display:grid;gap:14px}
+.trade-offer-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.trade-offer-top h3{margin:5px 0 0;font:500 18px 'Playfair Display',serif;color:#f0e8d9}
+.trade-status{display:inline-flex;align-items:center;padding:5px 8px;border:1px solid #41443a;border-radius:999px;color:#b7baad;background:#22241f;font-size:9px;white-space:nowrap}
+.trade-status-pending{border-color:#6d5833;color:#e8c88e;background:#332b1f}
+.trade-status-countered{border-color:#485f77;color:#bad7f5;background:#202a34}
+.trade-status-accepted{border-color:#416545;color:#c5e3c2;background:#202d21}
+.trade-status-rejected,.trade-status-withdrawn{border-color:#68413b;color:#ddb1a9;background:#2b211f}
+.trade-pair{display:grid;grid-template-columns:minmax(0,1fr) 32px minmax(0,1fr);gap:8px;align-items:center}
+.trade-pair>svg{color:var(--gold);justify-self:center}
+.trade-pair>div{display:grid;gap:4px;min-width:0;padding:10px;border:1px solid #34372f;border-radius:8px;background:#20221e}
+.trade-pair small{color:#999b8f;font:8px 'DM Mono',monospace;letter-spacing:.04em}
+.trade-pair b{color:#ede6d7;font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+.trade-pair span{color:#9b9e91;font-size:9px;overflow-wrap:anywhere}
+.trade-chat{display:grid;gap:8px;max-height:250px;overflow:auto;padding:10px;border:1px solid #30332d;border-radius:9px;background:#141613}
+.trade-chat-line{display:grid;gap:3px;justify-self:start;max-width:88%;padding:9px 11px;border:1px solid #363930;border-radius:8px;background:#22241f}
+.trade-chat-line.mine{justify-self:end;border-color:#51452f;background:#302c22}
+.trade-chat-line b{color:#d6b77f;font-size:9px}
+.trade-chat-line span{white-space:pre-wrap;color:#e0ded4;font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+.trade-chat-line small{color:#85897d;font-size:8px}
+.trade-response-area{display:grid;gap:10px;padding-top:12px;border-top:1px solid #30332d}
+.trade-response-area label,.trade-proposal-modal .album-form>label{display:grid;gap:6px;color:#b4b6aa;font-size:10px;font-weight:600}
+.trade-response-area textarea,.trade-proposal-modal textarea,.trade-proposal-modal select{width:100%;padding:10px;border:1px solid #383b33;border-radius:7px;background:#131512;color:#e4e1d8;resize:vertical;font-size:10px}
+.trade-response-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.trade-response-actions .primary-btn,.trade-response-actions .secondary-btn{padding:8px 10px;min-height:32px;font-size:9px}
+.trade-response-actions .text-btn{margin-left:auto}
+.trade-response-area>.muted{display:flex;align-items:center;gap:5px;font-size:9px}
+.trade-empty-note{display:flex;align-items:center;gap:10px;padding:17px;border:1px dashed #41443b;border-radius:10px;color:#9d9f94;font-size:10px;line-height:1.6}
+.trade-proposal-modal{max-width:560px;max-height:calc(100vh - 26px);overflow:auto}
+.trade-proposal-modal .modal-head{position:sticky;top:0;z-index:3;background:#1b1d1a;padding:20px 23px 14px}
+.trade-proposal-modal .album-form{padding:0 23px 20px;display:grid;gap:16px}
+.trade-proposal-modal .album-form label select{width:100%;padding:10px;border:1px solid #383b33;border-radius:7px;background:#131512;color:#e4e1d8}
+.trade-proposal-target{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid #393c32;border-radius:9px;background:#22241f}
+.trade-proposal-target .trade-record-cover{width:72px;height:72px}
+.trade-proposal-target>div:last-child{display:grid;gap:5px;min-width:0}
+.trade-proposal-target b{color:#eee8dd;font-size:12px;overflow-wrap:anywhere}
+.trade-proposal-target span,.trade-proposal-target small{color:#9b9e91;font-size:9px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:1120px){.trade-record-grid{grid-template-columns:1fr}.trade-record-card{max-width:100%}}
+@media(max-width:940px){.app-version{left:80px}.catalog-table{min-width:820px}.share-panel{align-items:flex-start;flex-wrap:wrap}.share-copy{min-width:calc(100% - 65px)}.share-toggle{margin-left:56px}}
+@media(max-width:650px){.app-version{left:8px;bottom:67px;font-size:8px;padding:4px 6px}.view-switch button{padding:7px 8px}.trade-welcome{align-items:flex-start}.trade-welcome .secondary-btn{padding:8px;font-size:9px;flex-shrink:0}.share-panel{padding:12px;gap:10px}.share-icon{width:35px;height:35px}.share-copy{min-width:calc(100% - 48px)}.share-copy span{font-size:9px}.share-toggle{margin-left:0;width:100%}.trade-search{width:100%;min-width:100%}.trade-record-card{gap:9px;padding:9px}.trade-record-cover{width:82px;height:82px}.trade-record-details h3{font-size:15px}.trade-record-bottom{align-items:flex-start;flex-direction:column}.trade-propose-btn{width:100%}.trade-pair{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);gap:5px}.trade-pair>div{padding:8px}.trade-pair b{font-size:10px}.trade-offer-card{padding:11px}.trade-response-actions .text-btn{margin-left:0}.catalog-edit-modal .modal-head{padding:17px 16px 12px}.catalog-edit-modal .modal-head h2{font-size:24px}.catalog-edit-modal .album-form{padding:0 16px 16px}.catalog-table-wrap{border-radius:8px}}
+@media(max-width:650px){.side-nav{gap:4px}.side-nav button{width:auto;flex:1;min-width:0;gap:5px;padding:9px 4px}.side-nav button span{font-size:9px}.side-nav button svg{width:17px;height:17px}}

@@ -4,7 +4,7 @@ import {
   Disc3, Search, Plus, SlidersHorizontal, LogOut, Library, DiscAlbum,
   Music2, Users, Wallet, X, Check, LoaderCircle, Upload, Trash2,
   ArrowUpRight, Sparkles, CircleUserRound, Mail, LockKeyhole, ChevronDown,
-  AlertCircle, RefreshCw, ImagePlus, Globe
+  AlertCircle, RefreshCw, ImagePlus, Globe, Pencil, ArrowLeftRight, Send, Eye, EyeOff, MessageCircle, CheckCircle2, Clock3
 } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { parseCatalogFile, normalizeCatalogText } from './importCatalog';
@@ -604,6 +604,214 @@ function ImportCatalogModal({ user, currentAlbums, onClose, onImported }) {
   </div>;
 }
 
+function CatalogEditModal({ album, onClose, onSaved }) {
+  const originalRelease = (album.releases || [])[0] || null;
+  const [releaseId, setReleaseId] = useState(String(originalRelease?.id || ''));
+  const [form, setForm] = useState({
+    title: album.title || '',
+    artists: (album.artistNames || (album.artists || []).map((artist) => typeof artist === 'string' ? artist : artist.name).filter(Boolean)).join('; '),
+    albumYear: album.release_year ? String(album.release_year) : '',
+    genre: album.genreName && album.genreName !== 'Senza genere' ? album.genreName : (album.genres?.name || ''),
+    description: album.description || '',
+    format: originalRelease?.format || 'Vinile',
+    label: originalRelease?.label || '',
+    catalogNumber: originalRelease?.catalog_number || '',
+    pressingYear: originalRelease?.release_year ? String(originalRelease.release_year) : '',
+    country: originalRelease?.country || '',
+    edition: originalRelease?.edition || ''
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const update = (field, value) => setForm((old) => ({ ...old, [field]: value }));
+  const selectedRelease = (album.releases || []).find((release) => String(release.id) === releaseId) || null;
+
+  function chooseRelease(nextId) {
+    setReleaseId(nextId);
+    const release = (album.releases || []).find((item) => String(item.id) === nextId);
+    setForm((old) => ({
+      ...old,
+      format: release?.format || 'Vinile', label: release?.label || '',
+      catalogNumber: release?.catalog_number || '', pressingYear: release?.release_year ? String(release.release_year) : '',
+      country: release?.country || '', edition: release?.edition || ''
+    }));
+  }
+
+  async function save(event) {
+    event.preventDefault();
+    setSaving(true); setError('');
+    try {
+      const { error: saveError } = await supabase.rpc('update_catalog_album', {
+        p_album_id: Number(album.id),
+        p_title: form.title.trim(),
+        p_release_year: form.albumYear ? Number(form.albumYear) : null,
+        p_genre: form.genre.trim() || null,
+        p_artists: form.artists.trim(),
+        p_description: form.description.trim() || null,
+        p_release_id: releaseId ? Number(releaseId) : null,
+        p_format: form.format.trim() || 'Vinile',
+        p_label: form.label.trim() || null,
+        p_catalog_number: form.catalogNumber.trim() || null,
+        p_pressing_year: form.pressingYear ? Number(form.pressingYear) : null,
+        p_country: form.country.trim() || null,
+        p_edition: form.edition.trim() || null
+      });
+      if (saveError) throw saveError;
+      onSaved();
+    } catch (err) {
+      const message = err?.message || 'Non è stato possibile salvare le modifiche.';
+      setError(/update_catalog_album|schema cache|function/i.test(message)
+        ? 'La funzione di modifica non risulta attiva in Supabase. Controlla che lo script SQL della versione 1.3.0 sia stato applicato.'
+        : friendlyError(err));
+    } finally { setSaving(false); }
+  }
+
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+    <section className="modal-card catalog-edit-modal" role="dialog" aria-modal="true" aria-label="Modifica scheda album">
+      <header className="modal-head"><div><span className="eyebrow">CORREZIONE CATALOGO · VINILI v1.3.0</span><h2>Modifica disco</h2><p className="muted">Le correzioni al titolo e agli artisti aggiornano la scheda condivisa da tutti gli utenti.</p></div><button className="icon-btn" onClick={onClose} disabled={saving} aria-label="Chiudi"><X size={20}/></button></header>
+      <form className="album-form" onSubmit={save}>
+        <div className="form-section-label">ALBUM</div>
+        <div className="form-grid">
+          <label className="span-2">Titolo *<input value={form.title} onChange={(event) => update('title', event.target.value)} required maxLength={180}/></label>
+          <label className="span-2">Artista / artisti *<input value={form.artists} onChange={(event) => update('artists', event.target.value)} required placeholder="Separa più artisti con ;"/><small>Per più artisti, separali con un punto e virgola (;).</small></label>
+          <label>Anno album<input type="number" min="1800" max="2100" value={form.albumYear} onChange={(event) => update('albumYear', event.target.value)} placeholder="1998"/></label>
+          <label>Genere<input value={form.genre} onChange={(event) => update('genre', event.target.value)} placeholder="Eurodance, Jazz…"/></label>
+          <label className="span-2">Note descrittive<textarea rows="2" value={form.description} onChange={(event) => update('description', event.target.value)}/></label>
+        </div>
+        {(album.releases || []).length > 0 && <>
+          <div className="form-section-label">EDIZIONE / STAMPA DA CORREGGERE</div>
+          <div className="form-grid">
+            {(album.releases || []).length > 1 && <label className="span-2">Scegli l’edizione<select value={releaseId} onChange={(event) => chooseRelease(event.target.value)}>{album.releases.map((release) => <option key={release.id} value={String(release.id)}>{[release.format, release.edition, release.release_year, release.label].filter(Boolean).join(' · ') || `Edizione ${release.id}`}</option>)}</select></label>}
+            <label>Formato<select value={form.format} onChange={(event) => update('format', event.target.value)}>{FORMATS.map((format) => <option key={format} value={format}>{format}</option>)}</select></label>
+            <label>Anno stampa<input type="number" min="1800" max="2100" value={form.pressingYear} onChange={(event) => update('pressingYear', event.target.value)} placeholder="2001"/></label>
+            <label>Etichetta<input value={form.label} onChange={(event) => update('label', event.target.value)} placeholder="TIME Records"/></label>
+            <label>Numero di catalogo<input value={form.catalogNumber} onChange={(event) => update('catalogNumber', event.target.value)} placeholder="TIME 285"/></label>
+            <label>Paese stampa<input value={form.country} onChange={(event) => update('country', event.target.value)} placeholder="Italia"/></label>
+            <label>Edizione / mix<input value={form.edition} onChange={(event) => update('edition', event.target.value)} placeholder="Extended Mix"/></label>
+          </div>
+        </>}
+        {error && <div className="notice error"><AlertCircle size={17}/><span>{error}</span></div>}
+        <footer className="modal-actions"><button type="button" className="secondary-btn" onClick={onClose} disabled={saving}>Annulla</button><button type="submit" className="primary-btn" disabled={saving}>{saving ? <LoaderCircle size={17} className="spin"/> : <Check size={17}/>} Salva modifiche</button></footer>
+      </form>
+    </section>
+  </div>;
+}
+
+function TradeCenter({ user, myItems, onRefresh }) {
+  const [shareCollection, setShareCollection] = useState(false);
+  const [sharedItems, setSharedItems] = useState([]);
+  const [offers, setOffers] = useState([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [target, setTarget] = useState(null);
+  const [offeredItemId, setOfferedItemId] = useState('');
+  const [offerMessage, setOfferMessage] = useState('');
+  const [messageDrafts, setMessageDrafts] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const [profileResult, sharedResult, offersResult] = await Promise.all([
+        supabase.from('profiles').select('collection_public').eq('id', user.id).maybeSingle(),
+        supabase.rpc('get_shared_collection'),
+        supabase.rpc('get_trade_offers')
+      ]);
+      if (profileResult.error) throw profileResult.error;
+      if (sharedResult.error) throw sharedResult.error;
+      if (offersResult.error) throw offersResult.error;
+      setShareCollection(Boolean(profileResult.data?.collection_public));
+      setSharedItems(sharedResult.data || []);
+      setOffers((offersResult.data || []).map((offer) => ({ ...offer, messages: Array.isArray(offer.messages) ? offer.messages : (typeof offer.messages === 'string' ? JSON.parse(offer.messages || '[]') : []) })));
+    } catch (err) {
+      setError(/get_shared_collection|get_trade_offers|schema cache|column.*collection_public|function/i.test(err?.message || '')
+        ? 'Manca la configurazione Scambi nel database. Occorre applicare lo script SQL della versione 1.3.0.'
+        : friendlyError(err));
+    } finally { setLoading(false); }
+  }, [user.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function toggleSharing(nextValue) {
+    setSaving(true); setError(''); setNotice('');
+    try {
+      const { error: updateError } = await supabase.from('profiles').update({ collection_public: nextValue }).eq('id', user.id);
+      if (updateError) throw updateError;
+      setShareCollection(nextValue);
+      setNotice(nextValue ? 'La tua collezione è ora visibile agli altri utenti che hanno scelto di partecipare agli scambi.' : 'La tua collezione non è più visibile agli altri utenti.');
+      await load();
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setSaving(false); }
+  }
+
+  function offerFor(item) {
+    setTarget(item);
+    setOfferedItemId(String(myItems[0]?.id || ''));
+    setOfferMessage(''); setError('');
+  }
+
+  async function sendOffer(event) {
+    event.preventDefault();
+    if (!target || !offeredItemId) { setError('Seleziona prima un tuo disco da proporre.'); return; }
+    setSaving(true); setError(''); setNotice('');
+    try {
+      const { error: offerError } = await supabase.rpc('create_trade_offer', {
+        p_offered_item_id: Number(offeredItemId),
+        p_requested_item_id: Number(target.item_id),
+        p_message: offerMessage.trim() || null
+      });
+      if (offerError) throw offerError;
+      setTarget(null); setNotice('Proposta inviata. L’altro collezionista può accettare, rifiutare o rispondere con una controproposta.');
+      await load();
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setSaving(false); }
+  }
+
+  async function respond(offer, action) {
+    const message = (messageDrafts[offer.offer_id] || '').trim();
+    if (action === 'counter' && !message) { setError('Scrivi una controproposta prima di inviarla.'); return; }
+    setSaving(true); setError(''); setNotice('');
+    try {
+      const { error: responseError } = await supabase.rpc('respond_trade_offer', { p_offer_id: Number(offer.offer_id), p_action: action, p_message: message || null });
+      if (responseError) throw responseError;
+      setMessageDrafts((old) => ({ ...old, [offer.offer_id]: '' }));
+      setNotice(action === 'accept' ? 'Accordo registrato. Il trasferimento fisico dei dischi va concordato direttamente tra voi.' : action === 'reject' ? 'Proposta rifiutata.' : action === 'withdraw' ? 'Proposta ritirata.' : 'Controproposta inviata.');
+      await load();
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setSaving(false); }
+  }
+
+  const filtered = sharedItems.filter((item) => [item.album_title, item.artist_names, item.owner_name, item.genre_name, item.format, item.label, item.edition].filter(Boolean).join(' ').toLowerCase().includes(search.trim().toLowerCase()));
+  const statusLabels = { pending: 'In attesa', countered: 'Controproposta', accepted: 'Accettata', rejected: 'Rifiutata', withdrawn: 'Ritirata' };
+  const activeOffers = offers.filter((offer) => ['pending', 'countered'].includes(offer.status));
+
+  return <div className="trade-page">
+    <div className="welcome-row trade-welcome"><div><span className="eyebrow">COLLEZIONISTI · SCAMBI · TRATTATIVE</span><h1>Confronta le collezioni<span className="title-period">.</span></h1><p className="page-subtitle">Scopri i dischi che gli altri collezionisti hanno scelto di condividere e proponi uno scambio.</p></div><button className="secondary-btn" onClick={load} disabled={loading}><RefreshCw size={16}/> Aggiorna</button></div>
+    <section className="share-panel"><div className="share-icon"><Eye size={19}/></div><div className="share-copy"><b>Condividi la tua collezione</b><span>È disattivata per impostazione predefinita. Se la attivi, gli altri utenti vedranno i dischi che possiedi, ma non i prezzi di acquisto o il valore stimato.</span></div><button type="button" className={`share-toggle ${shareCollection ? 'enabled' : ''}`} onClick={() => toggleSharing(!shareCollection)} disabled={saving} aria-pressed={shareCollection}>{shareCollection ? <Eye size={16}/> : <EyeOff size={16}/>} {shareCollection ? 'Condivisione attiva' : 'Condividi i miei dischi'}</button></section>
+    {error && <div className="notice error page-notice"><AlertCircle size={17}/><span>{error}</span></div>}{notice && <div className="notice success page-notice"><Check size={17}/><span>{notice}</span><button className="icon-btn" onClick={() => setNotice('')}><X size={15}/></button></div>}
+    <section className="catalog-section trade-catalog-section"><div className="catalog-head"><div><h2>Dischi disponibili per lo scambio <span className="result-count">{filtered.length}</span></h2><p>Mostra solo i dischi degli utenti che hanno attivato la condivisione.</p></div><label className="search-box trade-search"><Search size={18}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cerca artista, titolo o collezionista…"/></label></div>
+      {loading ? <div className="empty-state"><LoaderCircle className="spin" size={28}/><b>Carico le collezioni condivise…</b></div> : filtered.length ? <div className="trade-record-grid">{filtered.map((item) => <article className="trade-record-card" key={item.item_id}><div className="trade-record-cover">{item.cover_url ? <img src={item.cover_url} alt={`Copertina ${item.album_title}`} loading="lazy"/> : <Cover album={{ title: item.album_title }} />}</div><div className="trade-record-details"><span className="album-genre">{item.genre_name || 'Senza genere'} · {item.owner_name}</span><h3>{item.album_title}</h3><p>{item.artist_names || 'Artista non indicato'}</p><span className="trade-record-meta">{[item.format, item.pressing_year, item.label, item.edition].filter(Boolean).join(' · ')}</span><div className="trade-record-bottom"><span>{item.vinyl_condition || 'Condizione n.d.'}</span><button className="primary-btn trade-propose-btn" onClick={() => offerFor(item)} disabled={!myItems.length}><ArrowLeftRight size={15}/> Proponi scambio</button></div></div></article>)}</div> : <div className="empty-state"><div className="empty-icon"><ArrowLeftRight size={30}/></div><h3>Nessuna collezione condivisa da mostrare</h3><p>{shareCollection ? 'Al momento gli altri utenti non hanno attivato la condivisione. Invita i tuoi amici a farlo dalla sezione Scambi.' : 'Puoi attivare la condivisione sopra per partecipare. Gli altri utenti dovranno abilitarla a loro volta per comparire qui.'}</p></div>}
+    </section>
+    <section className="catalog-section trade-offers-section"><div className="catalog-head"><div><h2>Proposte e contrattazioni <span className="result-count">{offers.length}</span></h2><p>Le proposte accettate registrano l’accordo, ma non trasferiscono automaticamente i dischi tra collezioni.</p></div></div>
+      {!loading && offers.length === 0 ? <div className="trade-empty-note"><MessageCircle size={18}/> Qui vedrai le proposte inviate e ricevute, con le eventuali controproposte.</div> : <div className="trade-offer-list">{offers.map((offer) => {
+        const myTurn = offer.turn_user_id === user.id;
+        const active = ['pending', 'countered'].includes(offer.status);
+        const canRespond = active && myTurn;
+        const sentByMe = offer.my_role === 'sent';
+        const messages = offer.messages || [];
+        return <article className="trade-offer-card" key={offer.offer_id}>
+          <div className="trade-offer-top"><div><span className="eyebrow">{sentByMe ? 'PROPOSTA INVIATA' : 'PROPOSTA RICEVUTA'}</span><h3>Scambio con {offer.other_user_name}</h3></div><span className={`trade-status trade-status-${offer.status}`}>{statusLabels[offer.status] || offer.status}</span></div>
+          <div className="trade-pair"><div><small>DA TE / DA {sentByMe ? 'TE' : offer.other_user_name.toUpperCase()}</small><b>{sentByMe ? offer.offered_title : offer.requested_title}</b><span>{sentByMe ? offer.offered_artist : offer.requested_artist}</span></div><ArrowLeftRight size={18}/><div><small>IN CAMBIO</small><b>{sentByMe ? offer.requested_title : offer.offered_title}</b><span>{sentByMe ? offer.requested_artist : offer.offered_artist}</span></div></div>
+          {messages.length > 0 && <div className="trade-chat">{messages.map((message) => <div className={`trade-chat-line ${message.sender_id === user.id ? 'mine' : ''}`} key={message.id}><b>{message.sender_name}</b><span>{message.message}</span><small>{new Date(message.created_at).toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})}</small></div>)}</div>}
+          {active && <div className="trade-response-area"><label>Messaggio / controproposta<textarea rows="2" maxLength={1200} value={messageDrafts[offer.offer_id] || ''} onChange={(event) => setMessageDrafts((old) => ({ ...old, [offer.offer_id]: event.target.value }))} placeholder={canRespond ? 'Scrivi un commento o la tua controproposta…' : 'Puoi inviare un messaggio quando tocca a te rispondere.'} disabled={!canRespond || saving}/></label><div className="trade-response-actions">{canRespond && <><button className="secondary-btn" onClick={() => respond(offer, 'counter')} disabled={saving}><MessageCircle size={15}/> Controproponi</button><button className="secondary-btn" onClick={() => respond(offer, 'reject')} disabled={saving}>Rifiuta</button><button className="primary-btn" onClick={() => respond(offer, 'accept')} disabled={saving}><Check size={15}/> Accetta</button></>}{sentByMe && <button className="text-btn" onClick={() => respond(offer, 'withdraw')} disabled={saving}>Ritira proposta</button>}</div>{active && !canRespond && <small className="muted"><Clock3 size={13}/> In attesa che l’altro collezionista risponda. Puoi ritirare la proposta se l’hai inviata.</small>}</div>}
+        </article>;
+      })}</div>}
+    </section>
+    {target && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setTarget(null); }}><section className="modal-card trade-proposal-modal"><header className="modal-head"><div><span className="eyebrow">NUOVA PROPOSTA</span><h2>Proponi uno scambio</h2><p className="muted">Vuoi proporre un tuo disco in cambio di quello di {target.owner_name}?</p></div><button className="icon-btn" onClick={() => setTarget(null)} disabled={saving}><X size={20}/></button></header><form className="album-form" onSubmit={sendOffer}><div className="trade-proposal-target"><div className="trade-record-cover">{target.cover_url ? <img src={target.cover_url} alt={target.album_title}/> : <Cover album={{title:target.album_title}}/>}</div><div><b>{target.album_title}</b><span>{target.artist_names}</span><small>Collezione di {target.owner_name}</small></div></div><label>Il tuo disco da offrire<select value={offeredItemId} onChange={(event) => setOfferedItemId(event.target.value)} required>{myItems.map((item) => <option key={item.id} value={String(item.id)}>{[item.album.title, item.artistNames.join(', '), item.format, item.release.edition].filter(Boolean).join(' · ')}</option>)}</select></label><label>Messaggio iniziale (facoltativo)<textarea rows="3" maxLength={1200} value={offerMessage} onChange={(event) => setOfferMessage(event.target.value)} placeholder="Es. Ti interessa uno scambio alla pari? Posso aggiungere altri dischi…"/></label>{error && <div className="notice error"><AlertCircle size={16}/>{error}</div>}<footer className="modal-actions"><button type="button" className="secondary-btn" onClick={() => setTarget(null)} disabled={saving}>Annulla</button><button type="submit" className="primary-btn" disabled={saving || !offeredItemId}>{saving ? <LoaderCircle size={17} className="spin"/> : <Send size={16}/>} Invia proposta</button></footer></form></section></div>}
+  </div>;
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -620,6 +828,8 @@ function App() {
   const [showFilters, setShowFilters] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [editingAlbum, setEditingAlbum] = useState(null);
+  const [viewMode, setViewMode] = useState('grid');
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -657,6 +867,7 @@ function App() {
   },[session?.user?.id]);
 
   useEffect(()=>{if(session?.user){loadData();ensureProfile(session.user).catch(()=>{});}},[session?.user?.id,loadData]);
+  useEffect(() => { const handler = (event) => { const found = albums.find((album) => String(album.id) === String(event.detail?.albumId)); if (found) setEditingAlbum(found); }; window.addEventListener('vinili:edit-album', handler); return () => window.removeEventListener('vinili:edit-album', handler); }, [albums]);
 
   async function ensureProfile(user) {
     const base = (user.user_metadata?.username || user.email?.split('@')[0] || 'vinilista').toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,35) || 'vinilista';
@@ -693,6 +904,7 @@ function App() {
   if(!session) return <AuthScreen/>;
 
   const isCollection = activeTab==='collection';
+  const isTrades = activeTab==='trades';
   const listing = isCollection ? collectionItems.filter(item=>{
     const q=query.trim().toLowerCase(); const search=[item.album.title,...item.artistNames,item.genreName,item.format,item.release.label,item.release.catalog_number].filter(Boolean).join(' ').toLowerCase();
     return !q||search.includes(q);
@@ -703,24 +915,28 @@ function App() {
       <div className="side-label">IL TUO SPAZIO</div><nav className="side-nav">
         <button className={activeTab==='catalog'?'active':''} onClick={()=>setActiveTab('catalog')}><Library size={19}/><span>Catalogo</span><span className="nav-count">{albums.length}</span></button>
         <button className={activeTab==='collection'?'active':''} onClick={()=>setActiveTab('collection')}><DiscAlbum size={19}/><span>La mia collezione</span><span className="nav-count">{myItems.length}</span></button>
+        <button className={activeTab==='trades'?'active':''} onClick={()=>setActiveTab('trades')}><ArrowLeftRight size={19}/><span>Scambi</span></button>
       </nav>
       <div className="sidebar-note"><div className="note-icon"><Music2 size={18}/></div><p>La musica passa.<br/><b>I dischi restano.</b></p><span>Il piacere di collezionare, senza fretta.</span></div>
       <div className="sidebar-user"><div className="avatar">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</div><div className="user-details"><b>{session.user.user_metadata?.display_name||session.user.email?.split('@')[0]}</b><span>{session.user.email}</span></div><button className="icon-btn logout-btn" title="Esci" onClick={signOut}><LogOut size={17}/></button></div>
+      <div className="app-version">VINILI v1.3.0 · 21/10/2026</div>
     </aside>
 
-    <main className="main-content"><header className="topbar"><div className="crumb"><span>VINILI</span><span className="crumb-slash">/</span><b>{isCollection?'LA MIA COLLEZIONE':'CATALOGO MUSICALE'}</b></div><div className="top-actions"><span className="online-dot"/> ARCHIVIO SINCRONIZZATO <button className="avatar avatar-small" onClick={signOut} title="Esci">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</button></div></header>
+    <main className="main-content"><header className="topbar"><div className="crumb"><span>VINILI</span><span className="crumb-slash">/</span><b>{isCollection?'LA MIA COLLEZIONE':isTrades?'SCAMBI E CONFRONTI':'CATALOGO MUSICALE'}</b></div><div className="top-actions"><span className="online-dot"/> ARCHIVIO SINCRONIZZATO <button className="avatar avatar-small" onClick={signOut} title="Esci">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</button></div></header>
       <section className="page-wrap">
+        {isTrades ? <TradeCenter user={session.user} myItems={collectionItems} onRefresh={loadData}/> : <>
         <div className="welcome-row"><div><span className="eyebrow">{isCollection?'IL TUO TESORO PERSONALE':'ESPLORA, CERCA, RICORDA'}</span><h1>{isCollection?'La tua collezione':'Il catalogo dei vinili'}<span className="title-period">.</span></h1><p className="page-subtitle">{isCollection?'Ogni copia racconta qualcosa. Qui c’è la tua storia musicale.':'Un archivio condiviso per scoprire album e custodire le tue copie.'}</p></div><div className="welcome-actions"><button className="secondary-btn import-launch-btn" onClick={()=>setShowImport(true)}><Upload size={17}/> Importa catalogo</button><button className="primary-btn add-btn" onClick={()=>setShowAdd(true)}><Plus size={18}/> Aggiungi vinile</button></div></div>
         <div className="stats-grid"><div className="stat-card"><div className="stat-top"><span>DISCHI A CATALOGO</span><Library size={18}/></div><div className="stat-value">{albums.length.toLocaleString('it-IT')}<span className="stat-caption">album</span></div><div className="stat-foot">Archivio condiviso</div></div><div className="stat-card"><div className="stat-top"><span>ARTISTI</span><Users size={18}/></div><div className="stat-value">{artists.length.toLocaleString('it-IT')}<span className="stat-caption">artisti</span></div><div className="stat-foot">Voci della tua musica</div></div><div className="stat-card"><div className="stat-top"><span>LA MIA COLLEZIONE</span><Disc3 size={18}/></div><div className="stat-value">{myItems.length.toLocaleString('it-IT')}<span className="stat-caption">copie</span></div><div className="stat-foot">Dischi che possiedi</div></div><div className="stat-card stat-highlight"><div className="stat-top"><span>VALORE STIMATO</span><Wallet size={18}/></div><div className="stat-value money-value">{formatMoney(collectionValue)}</div><div className="stat-foot">Somma dei valori inseriti</div></div></div>
-        <section className="catalog-section"><div className="catalog-head"><div><h2>{isCollection?'Le tue copie':'Esplora i dischi'} <span className="result-count">{listing.length}</span></h2><p>{isCollection?'Edizioni e dettagli della tua collezione':'Cerca un titolo, un artista, un anno o un’etichetta.'}</p></div><div className="catalog-tools"><label className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cerca nel catalogo…"/><kbd>⌘ K</kbd>{query&&<button onClick={()=>setQuery('')} aria-label="Pulisci ricerca"><X size={15}/></button>}</label><button className={`filter-btn ${showFilters?'selected':''}`} onClick={()=>setShowFilters(s=>!s)}><SlidersHorizontal size={17}/> Filtri</button></div></div>
+        <section className="catalog-section"><div className="catalog-head"><div><h2>{isCollection?'Le tue copie':'Esplora i dischi'} <span className="result-count">{listing.length}</span></h2><p>{isCollection?'Edizioni e dettagli della tua collezione':'Cerca un titolo, un artista, un anno o un’etichetta.'}</p></div><div className="catalog-tools"><label className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cerca nel catalogo…"/><kbd>⌘ K</kbd>{query&&<button onClick={()=>setQuery('')} aria-label="Pulisci ricerca"><X size={15}/></button>}</label>{!isCollection && <div className="view-switch" aria-label="Visualizzazione catalogo"><button className={viewMode==='grid'?'selected':''} onClick={()=>setViewMode('grid')} title="Vista schede">Schede</button><button className={viewMode==='table'?'selected':''} onClick={()=>setViewMode('table')} title="Vista elenco tipo foglio di calcolo">Elenco</button></div>}<button className={`filter-btn ${showFilters?'selected':''}`} onClick={()=>setShowFilters(s=>!s)}><SlidersHorizontal size={17}/> Filtri</button></div></div>
           {showFilters && !isCollection && <div className="filter-panel"><label>Genere<select value={genreFilter} onChange={e=>setGenreFilter(e.target.value)}><option value="all">Tutti i generi</option>{genres.map(g=><option key={g.id} value={g.name}>{g.name}</option>)}</select></label><label>Formato<select value={formatFilter} onChange={e=>setFormatFilter(e.target.value)}><option value="all">Tutti i formati</option>{formats.map(f=><option key={f} value={f}>{f}</option>)}</select></label><label className="check-filter"><input type="checkbox" checked={showMineOnly} onChange={e=>setShowMineOnly(e.target.checked)}/> Solo album che possiedo</label><button className="text-btn" onClick={()=>{setGenreFilter('all');setFormatFilter('all');setShowMineOnly(false)}}>Azzera filtri</button></div>}
           {error&&<div className="notice error page-notice"><AlertCircle size={17}/><span>{error}</span><button className="text-btn" onClick={loadData}><RefreshCw size={15}/> Riprova</button></div>}
           {successMessage&&<div className="notice success page-notice"><Check size={17}/>{successMessage}<button className="icon-btn" onClick={()=>setSuccessMessage('')}><X size={15}/></button></div>}
-          {loadingData ? <div className="empty-state"><LoaderCircle className="spin" size={30}/><b>Sto aggiornando l’archivio…</b><span>Sincronizzazione con Supabase</span></div> : listing.length ? <div className="album-grid">{isCollection ? listing.map(item=><article className="album-card" key={`item-${item.id}`}><button className="album-hit-area" onClick={()=>setSelectedAlbum({...item.album,artists:item.artistNames.map(name=>({name})),artistNames:item.artistNames,genreName:item.genreName,releases:[item.release],personalItem:item})}><div className="cover-wrap"><Cover album={item.album}/><span className="format-pill">{item.format}</span><span className="owned-badge"><Check size={12}/> IN COLLEZIONE</span></div><div className="album-card-info"><span className="album-genre">{item.genreName}</span><h3>{item.album.title}</h3><p>{item.artistNames.join(', ')||'Artista non indicato'}</p><div className="album-card-foot"><span>{item.release.release_year||item.album.release_year||'Anno n.d.'}</span><span>{item.estimated_value?formatMoney(item.estimated_value):'Valore n.d.'}</span></div></div></button><button className="remove-item" title="Rimuovi dalla collezione" onClick={()=>deleteItem(item)}><Trash2 size={15}/></button></article>) : listing.map(album=><article className="album-card" key={album.id}><button className="album-hit-area" onClick={()=>setSelectedAlbum(album)}><div className="cover-wrap"><Cover album={album}/>{album.releases.length>0&&<span className="format-pill">{album.releases[0].format||'Vinile'}</span>}{album.releases.some(r=>(r.collection_items||[]).some(i=>i.owner_id===session.user.id))&&<span className="owned-badge"><Check size={12}/> IN COLLEZIONE</span>}</div><div className="album-card-info"><span className="album-genre">{album.genreName}</span><h3>{album.title}</h3><p>{artistsOf(album)}</p><div className="album-card-foot"><span>{album.release_year||'Anno n.d.'}</span><span>{album.releases.length} {album.releases.length===1?'edizione':'edizioni'}</span></div></div></button></article>)}</div> : <div className="empty-state"><div className="empty-icon"><Disc3 size={31}/></div><h3>{isCollection?'La tua collezione inizia da qui':'Il catalogo è pronto per il primo disco'}</h3><p>{query?'Nessun risultato con questa ricerca. Prova un altro termine.':isCollection?'Aggiungi il tuo primo vinile per iniziare a costruire il tuo archivio personale.':'Aggiungi un album per iniziare a costruire l’archivio condiviso con i tuoi amici.'}</p>{query?<button className="secondary-btn" onClick={()=>setQuery('')}>Pulisci ricerca</button>:<button className="primary-btn" onClick={()=>setShowAdd(true)}><Plus size={17}/> Aggiungi il primo vinile</button>}</div>}
-        </section><footer className="page-footer"><span>VINILI<span className="brand-dot">.</span> — IL PIACERE DI COLLEZIONARE</span><span>CATALOGO CONDIVISO · COLLEZIONI PERSONALI</span></footer>
+          {loadingData ? <div className="empty-state"><LoaderCircle className="spin" size={30}/><b>Sto aggiornando l’archivio…</b><span>Sincronizzazione con Supabase</span></div> : listing.length ? (!isCollection && viewMode==='table') ? <div className="catalog-table-wrap"><table className="catalog-table"><thead><tr><th>Copertina</th><th>Titolo / artista</th><th>Anno</th><th>Genere</th><th>Edizioni</th><th>Azioni</th></tr></thead><tbody>{shownAlbums.map(album=><tr key={album.id}><td className="table-cover-cell"><div className="table-cover">{album.cover_url ? <img src={album.cover_url} alt={album.title}/> : <Cover album={album}/>}</div></td><td><b>{album.title}</b><span className="table-subtitle">{artistsOf(album)}</span></td><td>{album.release_year || '—'}</td><td>{album.genreName || 'Senza genere'}</td><td><div className="table-release-cell">{album.releases.length ? album.releases.map((release)=><span key={release.id}>{[release.format,release.release_year,release.edition].filter(Boolean).join(' · ') || 'Edizione'}</span>) : <span>Da completare</span>}</div></td><td><div className="table-actions"><button className="secondary-btn table-edit-btn" onClick={()=>setEditingAlbum(album)}><Pencil size={14}/> Modifica</button><button className="icon-btn" onClick={()=>setSelectedAlbum(album)} title="Apri scheda"><ArrowUpRight size={16}/></button></div></td></tr>)}</tbody></table></div> : <div className="album-grid">{isCollection ? listing.map(item=><article className="album-card" key={`item-${item.id}`}><button className="album-hit-area" onClick={()=>setSelectedAlbum({...item.album,artists:item.artistNames.map(name=>({name})),artistNames:item.artistNames,genreName:item.genreName,releases:[item.release],personalItem:item})}><div className="cover-wrap"><Cover album={item.album}/><span className="format-pill">{item.format}</span><span className="owned-badge"><Check size={12}/> IN COLLEZIONE</span></div><div className="album-card-info"><span className="album-genre">{item.genreName}</span><h3>{item.album.title}</h3><p>{item.artistNames.join(', ')||'Artista non indicato'}</p><div className="album-card-foot"><span>{item.release.release_year||item.album.release_year||'Anno n.d.'}</span><span>{item.estimated_value?formatMoney(item.estimated_value):'Valore n.d.'}</span></div></div></button><button className="remove-item" title="Rimuovi dalla collezione" onClick={()=>deleteItem(item)}><Trash2 size={15}/></button></article>) : listing.map(album=><article className="album-card" key={album.id}><button className="album-hit-area" onClick={()=>setSelectedAlbum(album)}><div className="cover-wrap"><Cover album={album}/>{album.releases.length>0&&<span className="format-pill">{album.releases[0].format||'Vinile'}</span>}{album.releases.some(r=>(r.collection_items||[]).some(i=>i.owner_id===session.user.id))&&<span className="owned-badge"><Check size={12}/> IN COLLEZIONE</span>}</div><div className="album-card-info"><span className="album-genre">{album.genreName}</span><h3>{album.title}</h3><p>{artistsOf(album)}</p><div className="album-card-foot"><span>{album.release_year||'Anno n.d.'}</span><span>{album.releases.length} {album.releases.length===1?'edizione':'edizioni'}</span></div></div></button></article>)}</div> : <div className="empty-state"><div className="empty-icon"><Disc3 size={31}/></div><h3>{isCollection?'La tua collezione inizia da qui':'Il catalogo è pronto per il primo disco'}</h3><p>{query?'Nessun risultato con questa ricerca. Prova un altro termine.':isCollection?'Aggiungi il tuo primo vinile per iniziare a costruire il tuo archivio personale.':'Aggiungi un album per iniziare a costruire l’archivio condiviso con i tuoi amici.'}</p>{query?<button className="secondary-btn" onClick={()=>setQuery('')}>Pulisci ricerca</button>:<button className="primary-btn" onClick={()=>setShowAdd(true)}><Plus size={17}/> Aggiungi il primo vinile</button>}</div>}
+        </section></>}<footer className="page-footer"><span>VINILI<span className="brand-dot">.</span> — IL PIACERE DI COLLEZIONARE</span><span>CATALOGO CONDIVISO · COLLEZIONI PERSONALI</span></footer>
       </section>
     </main>
     {showImport&&<ImportCatalogModal user={session.user} currentAlbums={albums} onClose={()=>setShowImport(false)} onImported={()=>{setSuccessMessage('Importazione completata. Il catalogo è stato aggiornato.');loadData();}}/>}
+    {editingAlbum&&<CatalogEditModal album={editingAlbum} onClose={()=>setEditingAlbum(null)} onSaved={()=>{setEditingAlbum(null);setSuccessMessage('Scheda disco aggiornata.');loadData();}}/>}
     {showAdd&&<AddAlbumModal user={session.user} onClose={()=>setShowAdd(false)} onSaved={()=>{setSuccessMessage('Vinile aggiunto correttamente.');loadData();}}/>}
     {selectedAlbum&&<AlbumDetails album={selectedAlbum} user={session.user} onClose={()=>setSelectedAlbum(null)} onChanged={()=>{setSelectedAlbum(null);loadData();}}/>}
   </div>;
@@ -872,7 +1088,7 @@ function AlbumDetails({album,user,onClose,onChanged}) {
       if(insertError)throw insertError;onChanged();
     }catch(err){setError(friendlyError(err));}finally{setSaving(false);}
   }
-  return <><div className="modal-backdrop detail-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="detail-modal"><button className="icon-btn detail-close" onClick={onClose}><X size={20}/></button><div className="detail-cover"><Cover album={album} large/><span className="detail-art-label">VINILI ARCHIVE / {String(album.id||'').padStart(4,'0')}</span></div><div className="detail-content"><span className="eyebrow">{album.genreName||album.genres?.name||'ALBUM'} · SCHEDA DISCO</span><h2>{album.title}</h2><p className="detail-artist">{artists.join(', ')||'Artista non indicato'}</p><div className="detail-meta"><div><span>ANNO ALBUM</span><b>{album.release_year||'—'}</b></div><div><span>EDIZIONI</span><b>{releases.length}</b></div></div><button type="button" className="secondary-btn cover-manage-button" onClick={() => setShowCoverManager(true)}><ImagePlus size={16}/>{album.cover_url ? 'Cambia copertina' : 'Aggiungi copertina'}</button>{album.description&&<p className="detail-description">{album.description}</p>}
+  return <><div className="modal-backdrop detail-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="detail-modal"><button className="icon-btn detail-close" onClick={onClose}><X size={20}/></button><div className="detail-cover"><Cover album={album} large/><span className="detail-art-label">VINILI ARCHIVE / {String(album.id||'').padStart(4,'0')}</span></div><div className="detail-content"><span className="eyebrow">{album.genreName||album.genres?.name||'ALBUM'} · SCHEDA DISCO</span><h2>{album.title}</h2><p className="detail-artist">{artists.join(', ')||'Artista non indicato'}</p><div className="detail-meta"><div><span>ANNO ALBUM</span><b>{album.release_year||'—'}</b></div><div><span>EDIZIONI</span><b>{releases.length}</b></div></div><button type="button" className="secondary-btn cover-manage-button" onClick={() => setShowCoverManager(true)}><ImagePlus size={16}/>{album.cover_url ? 'Cambia copertina' : 'Aggiungi copertina'}</button><button type="button" className="secondary-btn catalog-detail-edit-button" onClick={() => { onClose(); window.setTimeout(() => window.dispatchEvent(new CustomEvent('vinili:edit-album',{detail:{albumId:album.id}})), 0); }}><Pencil size={16}/> Modifica scheda</button>{album.description&&<p className="detail-description">{album.description}</p>}
       <div className="form-section-label">EDIZIONI DEL DISCO</div>{releases.length? <div className="release-list">{releases.map(rel=>{const owned=(rel.collection_items||[]).some(i=>i.owner_id===user.id)||(personalItem&&personalItem.release?.id===rel.id);return <div className="release-row" key={rel.id}><div className="release-disc"><Disc3 size={19}/></div><div className="release-info"><b>{rel.format||'Vinile'}{rel.edition?` · ${rel.edition}`:''}</b><span>{[rel.release_year,rel.label,rel.catalog_number,rel.country].filter(Boolean).join(' · ')||'Dettagli stampa da completare'}</span></div>{owned?<span className="owned-inline"><Check size={14}/> Tuo</span>:<button className="add-icon-btn" disabled={saving} onClick={()=>addRelease(rel)} title="Aggiungi alla collezione"><Plus size={17}/></button>}</div>})}</div>:<p className="muted">Nessuna edizione registrata per questo album.</p>}
       {personalItem&&<div className="personal-details"><span className="eyebrow">LA TUA COPIA</span><div><span>Disco</span><b>{personalItem.vinyl_condition||'—'}</b></div><div><span>Copertina</span><b>{personalItem.sleeve_condition||'—'}</b></div><div><span>Prezzo d’acquisto</span><b>{personalItem.purchase_price!=null?money(personalItem.purchase_price):'—'}</b></div><div><span>Valore stimato</span><b>{personalItem.estimated_value!=null?money(personalItem.estimated_value):'—'}</b></div>{personalItem.notes&&<p>{personalItem.notes}</p>}</div>}
       {error&&<div className="notice error"><AlertCircle size={16}/>{error}</div>}<button className="secondary-btn full-btn" onClick={onClose}>Chiudi scheda</button>
