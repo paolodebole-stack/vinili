@@ -260,3 +260,108 @@
   .detail-title-line{gap:8px}
   .detail-title-line .youtube-link{padding:6px 7px;font-size:9px}
 }
+
+/* VINILI v1.4.0 — personal copy editing, count explanation, friends and private chat */
+.collection-card-actions{position:absolute;right:8px;bottom:8px;z-index:3;display:flex;align-items:center;gap:5px}
+.collection-edit-action{display:inline-flex;align-items:center;justify-content:center;gap:5px;background:#20231eeb;color:#d6c6a8;border:1px solid #555044;border-radius:6px;padding:6px 8px;font-size:9px;font-weight:700;box-shadow:0 3px 12px #0004}
+.collection-edit-action:hover{background:#393528;color:#fff0cf;border-color:var(--gold)}
+.collection-edit-action svg{color:var(--gold)}
+.collection-card-actions .remove-item{position:static;display:grid;place-items:center}
+.collection-edit-title{display:grid;gap:5px;padding:12px 13px;border:1px solid #34372f;border-radius:8px;background:#20221e}
+.collection-edit-title b{font-size:14px;line-height:1.4;color:#f0eadf}
+.collection-edit-title span{font-size:10px;color:var(--muted)}
+.catalog-meaning-note{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 23px}
+.catalog-meaning-note>div{display:grid;gap:5px;padding:13px 15px;border:1px solid #34372f;border-radius:9px;background:#1a1c19}
+.catalog-meaning-note b{font-size:11px;color:#e4c58c}
+.catalog-meaning-note span{color:#a3a69a;font-size:10px;line-height:1.6}
+.friends-page{display:grid;gap:18px}
+.friend-find-panel,.friends-list-panel,.friend-detail-panel{border:1px solid #33362e;background:#1a1c19;border-radius:12px;min-width:0}
+.friend-find-panel{padding:19px 20px;display:grid;gap:17px}
+.friend-find-copy{display:flex;align-items:flex-start;gap:12px}
+.friends-icon{width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center;border-radius:10px;background:#2a2d25;color:var(--gold)}
+.friend-find-copy h2{margin:0 0 6px;font:500 19px 'Playfair Display',serif}
+.friend-find-copy p{margin:0;max-width:720px;color:#a0a398;font-size:11px;line-height:1.65}
+.friend-find-form{display:flex;align-items:center;gap:9px}
+.friend-find-form .search-box{flex:1;min-width:0}
+.friend-email-toggle{padding-top:14px;border-top:1px solid #33362e;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.friend-email-toggle>div{display:grid;gap:4px;min-width:0}
+.friend-email-toggle b{font-size:11px;color:#e0ded4}
+.friend-email-toggle span{font-size:10px;color:#989b90;line-height:1.5}
+.friend-email-toggle .share-toggle{margin:0;white-space:nowrap}
+.friends-layout{display:grid;grid-template-columns:minmax(225px,.72fr) minmax(0,1.8fr);gap:14px;align-items:stretch}
+.friends-list-panel,.friend-detail-panel{padding:17px;min-height:380px}
+.friends-list-panel .catalog-head,.friend-requests .catalog-head{margin-bottom:12px}
+.friends-list{display:grid;gap:5px}
+.friend-list-row{display:flex;align-items:center;gap:10px;width:100%;min-width:0;padding:10px;border:1px solid transparent;border-radius:9px;text-align:left;background:transparent;color:var(--text)}
+.friend-list-row:hover,.friend-list-row.selected{background:#252720;border-color:#4a4537}
+.friend-avatar{display:grid;place-items:center;width:38px;height:38px;flex:0 0 auto;border:1px solid #4b473a;background:#292b24;border-radius:50%;color:var(--gold)}
+.friend-avatar.large{width:48px;height:48px}
+.friend-list-meta{flex:1;min-width:0;display:grid;gap:4px}
+.friend-list-meta b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.friend-list-meta small{font-size:9px;color:#96998d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.friend-list-row>svg{color:#8c8f82;flex:0 0 auto}
+.friends-list-panel .compact-empty{padding:24px 6px;min-height:200px}
+.outgoing-requests{display:grid;gap:8px;margin-top:20px;padding-top:14px;border-top:1px solid #34372f}
+.outgoing-requests>b{color:#b5b8ab;font-size:10px}
+.outgoing-request-row{display:flex;align-items:center;gap:7px;font-size:10px;color:#d9d7cb;min-width:0}
+.outgoing-request-row>span{flex:1;min-width:0;overflow-wrap:anywhere}
+.outgoing-request-row small{color:#bda16c;font-size:9px}
+.outgoing-request-row .text-btn{font-size:9px;padding:5px}
+.friend-requests{padding:17px;border:1px solid #34372f;border-radius:11px;background:#1a1c19}
+.friend-request-list{display:grid;gap:7px}
+.friend-request-card{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #33362e;border-radius:9px;background:#20221e}
+.friend-request-info{display:grid;gap:4px;flex:1;min-width:0}
+.friend-request-info b{font-size:11px}
+.friend-request-info span{font-size:9px;color:var(--muted)}
+.friend-request-card .primary-btn,.friend-request-card .secondary-btn{font-size:10px;padding:9px 11px;white-space:nowrap}
+.friend-detail-panel{display:flex;flex-direction:column;gap:14px}
+.friend-detail-head{display:flex;align-items:center;gap:12px;padding-bottom:13px;border-bottom:1px solid #33362e}
+.friend-detail-head>div:last-child{display:grid;gap:4px;min-width:0}
+.friend-detail-head .eyebrow{font-size:8px}
+.friend-detail-head h2{font:500 21px 'Playfair Display',serif;margin:0;color:#eee8dd;overflow-wrap:anywhere}
+.friend-detail-head p{margin:0;font-size:10px;color:#9c9f93;overflow-wrap:anywhere}
+.friend-panel-switch{display:flex;gap:6px;padding:4px;background:#131512;border:1px solid #2c2f29;border-radius:8px;width:max-content;max-width:100%}
+.friend-panel-switch button{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:#a1a398;font-size:10px;font-weight:600}
+.friend-panel-switch button.selected{color:#efd09a;background:#312c22;border-color:#55472f}
+.friend-compare-view{display:grid;gap:12px;min-height:0}
+.compare-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.compare-summary>div{display:grid;gap:5px;padding:11px;border:1px solid #393a30;border-radius:8px;background:#22241f}
+.compare-summary b{font:500 23px 'Playfair Display',serif;color:var(--gold)}
+.compare-summary span{color:#a7aa9e;font-size:9px;line-height:1.45}
+.comparison-record-list{display:grid;gap:6px;max-height:500px;overflow:auto;padding-right:2px}
+.comparison-record-row{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #30332c;border-radius:8px;background:#20221e;min-width:0}
+.comparison-cover{width:48px;height:48px;flex:0 0 auto;overflow:hidden;border-radius:5px;background:#141613}
+.comparison-cover img{width:100%;height:100%;object-fit:cover}
+.comparison-record-main{flex:1;min-width:0;display:grid;align-content:center;justify-items:start;gap:4px}
+.comparison-record-main>b{font-size:10px;line-height:1.4;color:#e7e2d7;overflow-wrap:anywhere}
+.comparison-record-main>span{font-size:8px;color:#9a9d91;overflow-wrap:anywhere}
+.comparison-record-main .youtube-link{font-size:8px;padding:4px 6px}
+.comparison-status{flex:0 0 auto}
+.comparison-status>span{display:inline-flex;align-items:center;gap:3px;border-radius:5px;padding:5px 6px;font-size:8px;white-space:nowrap}
+.status-both{background:#293629;color:#c1d6ac;border:1px solid #3c4d36}
+.status-missing{background:#3a2d1b;color:#edc686;border:1px solid #5b4829}
+.status-mine{background:#272d34;color:#bacbe1;border:1px solid #3d4b5a}
+.friend-chat-panel{border:1px solid #30332c;border-radius:9px;overflow:hidden;display:flex;flex-direction:column;min-height:370px;background:#151714}
+.friend-chat-messages{display:flex;flex-direction:column;gap:10px;flex:1;min-height:270px;max-height:520px;overflow:auto;padding:14px}
+.friend-chat-bubble{display:grid;gap:5px;align-self:flex-start;max-width:min(84%,540px);padding:10px 12px;border:1px solid #35382f;border-radius:10px 10px 10px 3px;background:#252720}
+.friend-chat-bubble.mine{align-self:flex-end;border-color:#554731;background:#302a20;border-radius:10px 10px 3px 10px}
+.friend-chat-bubble>span{color:#e2e0d5;font-size:11px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.friend-chat-bubble small{color:#999b90;font-size:8px;line-height:1.4}
+.chat-empty{display:grid;justify-items:center;align-content:center;gap:8px;flex:1;min-height:230px;color:#74786c;text-align:center}
+.chat-empty b{font-size:11px;color:#c6c6ba}
+.chat-empty span{font-size:9px;line-height:1.5;max-width:245px}
+.friend-chat-compose{display:flex;align-items:flex-end;gap:8px;padding:10px;border-top:1px solid #30332c;background:#1d1f1b}
+.friend-chat-compose textarea{flex:1;min-width:0;resize:vertical;max-height:110px;min-height:42px;padding:10px;border:1px solid #393c33;border-radius:8px;background:#121411;color:#e4e1d8;font-size:10px;line-height:1.5}
+.friend-chat-compose .primary-btn{padding:11px 13px}
+.friend-detail-empty{margin:auto;min-height:300px}
+.friend-privacy-note{display:flex;align-items:flex-start;gap:7px;margin:0;color:#84887c;font-size:9px;line-height:1.6}
+.friend-privacy-note svg{flex:0 0 auto;margin-top:1px;color:#b5a071}
+@media(max-width:1000px){.friends-layout{grid-template-columns:1fr}.friends-list-panel{min-height:0}.friends-list{grid-template-columns:repeat(2,minmax(0,1fr))}.friend-list-row{padding:8px}.friend-compare-view .comparison-record-list{max-height:420px}}
+@media(max-width:650px){.catalog-meaning-note{grid-template-columns:1fr;gap:7px;margin-bottom:16px}.catalog-meaning-note>div{padding:11px 12px}.collection-card-actions{right:6px;bottom:6px;gap:3px}.collection-edit-action{padding:6px;font-size:8px;gap:4px}.collection-edit-action svg{width:12px;height:12px}.collection-card-actions .remove-item{width:29px;height:29px}.friend-find-panel{padding:13px;gap:13px}.friend-find-form{align-items:stretch;flex-direction:column}.friend-find-form .primary-btn{width:100%}.friend-find-form .search-box{width:100%}.friend-find-copy h2{font-size:17px}.friend-find-copy p{font-size:10px}.friend-email-toggle{align-items:stretch;flex-direction:column;gap:10px}.friend-email-toggle .share-toggle{width:100%}.friends-list-panel,.friend-detail-panel{padding:11px}.friends-list{grid-template-columns:1fr}.friend-request-card{flex-wrap:wrap;gap:7px}.friend-request-info{min-width:calc(100% - 60px)}.friend-request-card .secondary-btn{margin-left:auto}.friend-detail-head h2{font-size:19px}.friend-panel-switch{width:100%}.friend-panel-switch button{flex:1;padding:8px 6px;font-size:9px}.compare-summary{gap:5px}.compare-summary>div{padding:8px}.compare-summary b{font-size:20px}.compare-summary span{font-size:8px}.comparison-record-row{gap:7px;padding:7px}.comparison-cover{width:39px;height:39px}.comparison-record-main>b{font-size:9px}.comparison-status>span{font-size:7px;padding:4px}.friend-chat-panel{min-height:340px}.friend-chat-messages{padding:10px;min-height:235px}.friend-chat-compose{padding:8px;gap:5px}.friend-chat-compose .primary-btn{padding:10px;font-size:9px}.friend-chat-compose .primary-btn svg{width:13px;height:13px}.friend-chat-compose textarea{font-size:10px}.friend-privacy-note{font-size:8px}}
+.comparison-status{display:grid;justify-items:end;gap:6px;max-width:130px}
+.comparison-trade-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;border:1px solid #5b4829;border-radius:5px;padding:6px 7px;background:#30291d;color:#e8c47f;font-size:8px;font-weight:700;white-space:nowrap}
+.comparison-trade-btn:hover{background:#423621;border-color:#d7a96c;color:#ffe6b4}
+@media(max-width:650px){.comparison-trade-btn{font-size:7px;padding:5px 5px;white-space:normal;text-align:center}.comparison-status{max-width:87px}}
+
+.collection-album-card .album-card-info{padding-bottom:49px}
+@media(max-width:650px){.side-nav button span:not(.nav-count){font-size:0;white-space:nowrap}.side-nav button:nth-child(2) span:not(.nav-count)::after{content:'Collezione';font-size:8px}.side-nav button:nth-child(4) span:not(.nav-count)::after{content:'Amici';font-size:8px}.side-nav button:nth-child(1) span:not(.nav-count)::after{content:'Catalogo';font-size:8px}.side-nav button:nth-child(3) span:not(.nav-count)::after{content:'Scambi';font-size:8px}}

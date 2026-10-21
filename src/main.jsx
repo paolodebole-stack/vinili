@@ -671,14 +671,14 @@ function CatalogEditModal({ album, onClose, onSaved }) {
     } catch (err) {
       const message = err?.message || 'Non è stato possibile salvare le modifiche.';
       setError(/update_catalog_album|schema cache|function/i.test(message)
-        ? 'La funzione di modifica non risulta attiva in Supabase. Controlla che lo script SQL della versione 1.3.0 sia stato applicato.'
+        ? 'La funzione di modifica non risulta attiva in Supabase. Controlla che lo script SQL della versione 1.4.0 sia stato applicato.'
         : friendlyError(err));
     } finally { setSaving(false); }
   }
 
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
     <section className="modal-card catalog-edit-modal" role="dialog" aria-modal="true" aria-label="Modifica scheda album">
-      <header className="modal-head"><div><span className="eyebrow">CORREZIONE CATALOGO · VINILI v1.3.0</span><h2>Modifica disco</h2><p className="muted">Le correzioni al titolo e agli artisti aggiornano la scheda condivisa da tutti gli utenti.</p></div><button className="icon-btn" onClick={onClose} disabled={saving} aria-label="Chiudi"><X size={20}/></button></header>
+      <header className="modal-head"><div><span className="eyebrow">CORREZIONE CATALOGO · VINILI v1.4.0</span><h2>Modifica disco</h2><p className="muted">Le correzioni al titolo e agli artisti aggiornano la scheda condivisa da tutti gli utenti.</p></div><button className="icon-btn" onClick={onClose} disabled={saving} aria-label="Chiudi"><X size={20}/></button></header>
       <form className="album-form" onSubmit={save}>
         <div className="form-section-label">ALBUM</div>
         <div className="form-grid">
@@ -702,6 +702,57 @@ function CatalogEditModal({ album, onClose, onSaved }) {
         </>}
         {error && <div className="notice error"><AlertCircle size={17}/><span>{error}</span></div>}
         <footer className="modal-actions"><button type="button" className="secondary-btn" onClick={onClose} disabled={saving}>Annulla</button><button type="submit" className="primary-btn" disabled={saving}>{saving ? <LoaderCircle size={17} className="spin"/> : <Check size={17}/>} Salva modifiche</button></footer>
+      </form>
+    </section>
+  </div>;
+}
+
+function CollectionItemEditModal({ item, user, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    vinyl_condition: item.vinyl_condition || 'Near Mint (NM)',
+    sleeve_condition: item.sleeve_condition || 'Very Good Plus (VG+)',
+    purchase_price: item.purchase_price == null ? '' : String(item.purchase_price),
+    estimated_value: item.estimated_value == null ? '' : String(item.estimated_value),
+    purchase_date: item.purchase_date || '',
+    notes: item.notes || ''
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const update = (field, value) => setForm(old => ({ ...old, [field]: value }));
+
+  async function save(event) {
+    event.preventDefault(); setSaving(true); setError('');
+    try {
+      const { error: saveError } = await supabase.from('collection_items').update({
+        vinyl_condition: form.vinyl_condition || null,
+        sleeve_condition: form.sleeve_condition || null,
+        purchase_price: form.purchase_price === '' ? null : Number(form.purchase_price),
+        estimated_value: form.estimated_value === '' ? null : Number(form.estimated_value),
+        purchase_date: form.purchase_date || null,
+        notes: form.notes.trim() || null
+      }).eq('id', item.id).eq('owner_id', user.id);
+      if (saveError) throw saveError;
+      onSaved();
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setSaving(false); }
+  }
+
+  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+    <section className="modal-card catalog-edit-modal" role="dialog" aria-modal="true" aria-label="Modifica la tua copia">
+      <header className="modal-head"><div><span className="eyebrow">LA MIA COLLEZIONE</span><h2>Modifica la tua copia</h2><p className="muted">Questi dati sono personali e non modificano la scheda condivisa del catalogo.</p></div><button className="icon-btn" onClick={onClose} disabled={saving} aria-label="Chiudi"><X size={20}/></button></header>
+      <form className="album-form" onSubmit={save}>
+        <div className="collection-edit-title"><b>{item.album?.title || item.releases?.albums?.title || 'Disco'}</b><span>{(item.artistNames || []).join(', ')}</span></div>
+        <div className="form-section-label">CONDIZIONE DELLA TUA COPIA</div>
+        <div className="form-grid">
+          <label>Condizione vinile<select value={form.vinyl_condition} onChange={event => update('vinyl_condition', event.target.value)}>{CONDITION_OPTIONS.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label>Condizione copertina<select value={form.sleeve_condition} onChange={event => update('sleeve_condition', event.target.value)}>{CONDITION_OPTIONS.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label>Prezzo d’acquisto (€)<input type="number" min="0" step="0.01" value={form.purchase_price} onChange={event => update('purchase_price', event.target.value)} placeholder="0,00"/></label>
+          <label>Valore stimato (€)<input type="number" min="0" step="0.01" value={form.estimated_value} onChange={event => update('estimated_value', event.target.value)} placeholder="0,00"/></label>
+          <label>Data d’acquisto<input type="date" value={form.purchase_date} onChange={event => update('purchase_date', event.target.value)}/></label>
+          <label className="span-2">Note personali<textarea rows="3" value={form.notes} onChange={event => update('notes', event.target.value)} placeholder="Dove l’hai trovato, difetti, dettagli…" maxLength={2000}/></label>
+        </div>
+        {error && <div className="notice error"><AlertCircle size={17}/><span>{error}</span></div>}
+        <footer className="modal-actions"><button type="button" className="secondary-btn" onClick={onClose} disabled={saving}>Annulla</button><button type="submit" className="primary-btn" disabled={saving}>{saving ? <LoaderCircle size={17} className="spin"/> : <Check size={17}/>} Salva copia</button></footer>
       </form>
     </section>
   </div>;
@@ -737,7 +788,7 @@ function TradeCenter({ user, myItems, onRefresh }) {
       setOffers((offersResult.data || []).map((offer) => ({ ...offer, messages: Array.isArray(offer.messages) ? offer.messages : (typeof offer.messages === 'string' ? JSON.parse(offer.messages || '[]') : []) })));
     } catch (err) {
       setError(/get_shared_collection|get_trade_offers|schema cache|column.*collection_public|function/i.test(err?.message || '')
-        ? 'Manca la configurazione Scambi nel database. Occorre applicare lo script SQL della versione 1.3.0.'
+        ? 'Manca la configurazione Scambi nel database. Occorre applicare lo script SQL della versione 1.4.0.'
         : friendlyError(err));
     } finally { setLoading(false); }
   }, [user.id]);
@@ -823,6 +874,208 @@ function TradeCenter({ user, myItems, onRefresh }) {
   </div>;
 }
 
+function FriendsCenter({ user, myItems, onRefresh }) {
+  const [emailDraft, setEmailDraft] = useState('');
+  const [shareEmail, setShareEmail] = useState(false);
+  const [friends, setFriends] = useState([]);
+  const [selectedFriendId, setSelectedFriendId] = useState('');
+  const [activePanel, setActivePanel] = useState('compare');
+  const [comparison, setComparison] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [messageDraft, setMessageDraft] = useState('');
+  const [tradeTarget, setTradeTarget] = useState(null);
+  const [tradeOfferedItemId, setTradeOfferedItemId] = useState('');
+  const [tradeMessageDraft, setTradeMessageDraft] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const loadFriends = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
+    setError('');
+    try {
+      const [profileResult, friendsResult] = await Promise.all([
+        supabase.from('profiles').select('share_email_with_friends').eq('id', user.id).maybeSingle(),
+        supabase.rpc('get_vinyl_friendships')
+      ]);
+      if (profileResult.error) throw profileResult.error;
+      if (friendsResult.error) throw friendsResult.error;
+      setShareEmail(Boolean(profileResult.data?.share_email_with_friends));
+      const rows = friendsResult.data || [];
+      setFriends(rows);
+      setSelectedFriendId(old => {
+        if (old && rows.some(friend => String(friend.friend_id) === String(old) && friend.status === 'accepted')) return old;
+        return String(rows.find(friend => friend.status === 'accepted')?.friend_id || '');
+      });
+    } catch (err) {
+      setError(/get_vinyl_friendships|schema cache|share_email_with_friends|function/i.test(err?.message || '')
+        ? 'La parte Amici non è ancora configurata nel database. Usa lo script SQL incluso nel pacchetto aggiornamento.'
+        : friendlyError(err));
+    } finally { if (!quiet) setLoading(false); }
+  }, [user.id]);
+
+  useEffect(() => { loadFriends(); }, [loadFriends]);
+
+  const acceptedFriends = friends.filter(friend => friend.status === 'accepted');
+  const incomingRequests = friends.filter(friend => friend.status === 'pending' && friend.direction === 'incoming');
+  const outgoingRequests = friends.filter(friend => friend.status === 'pending' && friend.direction === 'outgoing');
+  const selectedFriend = acceptedFriends.find(friend => String(friend.friend_id) === String(selectedFriendId)) || null;
+
+  const loadComparison = useCallback(async (friendId, quiet = false) => {
+    if (!friendId) { setComparison([]); return; }
+    if (!quiet) setCompareLoading(true);
+    try {
+      const { data, error: compareError } = await supabase.rpc('compare_vinyl_friend_collection', { p_friend_id: friendId });
+      if (compareError) throw compareError;
+      setComparison(data || []);
+    } catch (err) { setError(friendlyError(err)); }
+    finally { if (!quiet) setCompareLoading(false); }
+  }, []);
+
+  const loadMessages = useCallback(async (friendId, quiet = false) => {
+    if (!friendId) { setMessages([]); return; }
+    const friendship = friends.find(item => item.status === 'accepted' && String(item.friend_id) === String(friendId));
+    if (!friendship) { setMessages([]); return; }
+    try {
+      const { data, error: messageError } = await supabase.rpc('get_vinyl_friend_messages', { p_friendship_id: friendship.friendship_id });
+      if (messageError) throw messageError;
+      setMessages(data || []);
+    } catch (err) { if (!quiet) setError(friendlyError(err)); }
+  }, [friends]);
+
+  useEffect(() => { if (selectedFriendId) loadComparison(selectedFriendId); else setComparison([]); }, [selectedFriendId, loadComparison]);
+  useEffect(() => { if (selectedFriendId && activePanel === 'chat') loadMessages(selectedFriendId); else setMessages([]); }, [selectedFriendId, activePanel, loadMessages]);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      loadFriends(true);
+      if (selectedFriendId) {
+        if (activePanel === 'chat') loadMessages(selectedFriendId, true);
+        if (activePanel === 'compare') loadComparison(selectedFriendId, true);
+      }
+    }, 12000);
+    return () => window.clearInterval(timer);
+  }, [loadFriends, loadComparison, loadMessages, selectedFriendId, activePanel]);
+
+  async function sendRequest(event) {
+    event.preventDefault();
+    const email = emailDraft.trim().toLowerCase();
+    if (!email) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const { data, error: requestError } = await supabase.rpc('send_vinyl_friend_request', { p_email: email });
+      if (requestError) throw requestError;
+      const result = Array.isArray(data) ? data[0] : data;
+      const messagesByResult = {
+        sent: `Richiesta di amicizia inviata a ${result?.target_name || email}.`,
+        already_friends: 'Siete già amici.',
+        request_pending: 'Hai già inviato una richiesta a questo utente.',
+        incoming_pending: 'Questo utente ti ha già inviato una richiesta: puoi accettarla qui sotto.',
+        not_found: 'Non ho trovato un account con questa email. Verifica l’indirizzo e riprova.'
+      };
+      setNotice(messagesByResult[result?.result] || 'Richiesta elaborata.');
+      setEmailDraft('');
+      await loadFriends();
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setBusy(false); }
+  }
+
+  async function answerRequest(friend, action) {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const { error: answerError } = await supabase.rpc('respond_vinyl_friend_request', { p_friendship_id: friend.friendship_id, p_action: action });
+      if (answerError) throw answerError;
+      setNotice(action === 'accept' ? `Ora sei amico di ${friend.friend_name}.` : action === 'reject' ? 'Richiesta rifiutata.' : 'Richiesta annullata.');
+      await loadFriends();
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setBusy(false); }
+  }
+
+  async function toggleShareEmail() {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const next = !shareEmail;
+      const { error: updateError } = await supabase.from('profiles').update({ share_email_with_friends: next }).eq('id', user.id);
+      if (updateError) throw updateError;
+      setShareEmail(next);
+      setNotice(next ? 'La tua email sarà visibile soltanto agli amici che hai accettato.' : 'La tua email non sarà più mostrata agli amici.');
+      await loadFriends();
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setBusy(false); }
+  }
+
+  async function sendMessage(event) {
+    event.preventDefault();
+    if (!selectedFriend || !messageDraft.trim()) return;
+    const friendRow = friends.find(friend => friend.status === 'accepted' && String(friend.friend_id) === String(selectedFriendId));
+    if (!friendRow) return;
+    setBusy(true); setError('');
+    try {
+      const { error: sendError } = await supabase.rpc('send_vinyl_friend_message', { p_friendship_id: friendRow.friendship_id, p_message: messageDraft.trim() });
+      if (sendError) throw sendError;
+      setMessageDraft('');
+      await loadMessages(selectedFriendId);
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setBusy(false); }
+  }
+
+  function startTrade(row) {
+    setTradeTarget(row);
+    setTradeOfferedItemId(String(myItems[0]?.id || ''));
+    setTradeMessageDraft('');
+    setError(''); setNotice('');
+  }
+
+  async function sendFriendTradeOffer(event) {
+    event.preventDefault();
+    if (!tradeTarget?.friend_item_id || !tradeOfferedItemId) { setError('Seleziona un tuo disco da offrire.'); return; }
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const { error: offerError } = await supabase.rpc('create_trade_offer', {
+        p_offered_item_id: Number(tradeOfferedItemId),
+        p_requested_item_id: Number(tradeTarget.friend_item_id),
+        p_message: tradeMessageDraft.trim() || null
+      });
+      if (offerError) throw offerError;
+      setTradeTarget(null);
+      setActivePanel('chat');
+      setNotice('Proposta inviata! La troverai anche nella sezione Scambi, dove potrete accettare o controproporre.');
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setBusy(false); }
+  }
+
+  const compareMissing = comparison.filter(row => row.friend_owns_it && !row.i_own_it);
+  const compareOverlap = comparison.filter(row => row.friend_owns_it && row.i_own_it);
+  const compareMineOnly = comparison.filter(row => row.i_own_it && !row.friend_owns_it);
+
+  return <div className="friends-page">
+    <div className="welcome-row"><div><span className="eyebrow">COMUNITÀ VINILI · AMICIZIE · MESSAGGI</span><h1>I tuoi amici<span className="title-period">.</span></h1><p className="page-subtitle">Collega altri collezionisti, confrontate i dischi e organizzate gli scambi nella chat privata.</p></div><button className="secondary-btn" onClick={() => loadFriends()} disabled={loading}><RefreshCw size={16}/> Aggiorna</button></div>
+    <section className="friend-find-panel"><div className="friend-find-copy"><span className="friends-icon"><Users size={21}/></span><div><h2>Trova un collezionista</h2><p>Inserisci l’email con cui l’altra persona si è registrata su VINILI. La richiesta va accettata prima di poter confrontare le collezioni o chattare.</p></div></div><form className="friend-find-form" onSubmit={sendRequest}><label className="search-box"><Mail size={18}/><input type="email" required value={emailDraft} onChange={event => setEmailDraft(event.target.value)} placeholder="email@esempio.it"/></label><button className="primary-btn" type="submit" disabled={busy || !emailDraft.trim()}><Send size={16}/> Invia richiesta</button></form>
+      <div className="friend-email-toggle"><div><b>Condividi la mia email con gli amici</b><span>Facoltativo. Gli amici accettati vedranno il tuo indirizzo solo se attivi questa opzione.</span></div><button className={`share-toggle ${shareEmail ? 'enabled' : ''}`} onClick={toggleShareEmail} disabled={busy} aria-pressed={shareEmail}>{shareEmail ? <Eye size={16}/> : <EyeOff size={16}/>} {shareEmail ? 'Email visibile agli amici' : 'Email privata'}</button></div>
+    </section>
+    {error && <div className="notice error page-notice"><AlertCircle size={17}/><span>{error}</span></div>}{notice && <div className="notice success page-notice"><Check size={17}/><span>{notice}</span><button className="icon-btn" onClick={() => setNotice('')}><X size={15}/></button></div>}
+    {incomingRequests.length > 0 && <section className="catalog-section friend-requests"><div className="catalog-head"><div><h2>Richieste ricevute <span className="result-count">{incomingRequests.length}</span></h2><p>Accetta per confrontare le collezioni e aprire la chat.</p></div></div><div className="friend-request-list">{incomingRequests.map(friend => <article className="friend-request-card" key={friend.friendship_id}><div className="friend-avatar"><Users size={18}/></div><div className="friend-request-info"><b>{friend.friend_name}</b><span>{friend.friend_username ? `@${friend.friend_username}` : 'Collezionista VINILI'}</span></div><button className="secondary-btn" onClick={() => answerRequest(friend, 'reject')} disabled={busy}>Rifiuta</button><button className="primary-btn" onClick={() => answerRequest(friend, 'accept')} disabled={busy}><Check size={15}/> Accetta</button></article>)}</div></section>}
+    <div className="friends-layout">
+      <section className="friends-list-panel"><div className="catalog-head"><div><h2>Amici <span className="result-count">{acceptedFriends.length}</span></h2><p>Le tue connessioni su VINILI.</p></div></div>
+        {loading ? <div className="empty-state compact-empty"><LoaderCircle className="spin" size={26}/><b>Carico gli amici…</b></div> : acceptedFriends.length ? <div className="friends-list">{acceptedFriends.map(friend => <button key={friend.friendship_id} className={`friend-list-row ${String(friend.friend_id) === String(selectedFriendId) ? 'selected' : ''}`} onClick={() => { setSelectedFriendId(String(friend.friend_id)); setActivePanel('compare'); }}><span className="friend-avatar"><Users size={18}/></span><span className="friend-list-meta"><b>{friend.friend_name}</b><small>{friend.friend_email || friend.last_message || 'Amico VINILI'}</small></span><ArrowUpRight size={16}/></button>)}</div> : <div className="empty-state compact-empty"><div className="empty-icon"><Users size={28}/></div><h3>La tua rete inizia qui</h3><p>Invia una richiesta tramite email. Dopo l’accettazione potrete scoprire i dischi in comune e scrivervi nella chat.</p></div>}
+        {outgoingRequests.length > 0 && <div className="outgoing-requests"><b>Richieste inviate</b>{outgoingRequests.map(friend => <div className="outgoing-request-row" key={friend.friendship_id}><span>{friend.friend_name}</span><small>In attesa</small><button className="text-btn" onClick={() => answerRequest(friend, 'cancel')} disabled={busy}>Annulla</button></div>)}</div>}
+      </section>
+      <section className="friend-detail-panel">
+        {selectedFriend ? <>
+          <div className="friend-detail-head"><div className="friend-avatar large"><Users size={21}/></div><div><span className="eyebrow">AMICIZIA CONFERMATA</span><h2>{selectedFriend.friend_name}</h2><p>{selectedFriend.friend_email ? selectedFriend.friend_email : selectedFriend.friend_username ? `@${selectedFriend.friend_username}` : 'Collezionista VINILI'}</p></div></div>
+          <div className="friend-panel-switch"><button className={activePanel === 'compare' ? 'selected' : ''} onClick={() => setActivePanel('compare')}><DiscAlbum size={16}/> Confronta collezioni</button><button className={activePanel === 'chat' ? 'selected' : ''} onClick={() => setActivePanel('chat')}><MessageCircle size={16}/> Chat</button></div>
+          {activePanel === 'compare' ? <div className="friend-compare-view"><div className="compare-summary"><div><b>{compareMissing.length}</b><span>Edizioni che ha e ti mancano</span></div><div><b>{compareOverlap.length}</b><span>Edizioni possedute da entrambi</span></div><div><b>{compareMineOnly.length}</b><span>Edizioni che hai e mancano all’amico</span></div></div>
+            {compareLoading ? <div className="empty-state compact-empty"><LoaderCircle className="spin" size={24}/><b>Confronto in corso…</b></div> : comparison.length ? <div className="comparison-record-list">{comparison.map(row => <article className="comparison-record-row" key={`${row.release_id}-${row.album_id}`}><div className="comparison-cover">{row.cover_url ? <img src={row.cover_url} alt={row.title}/> : <Cover album={{title:row.title}}/>}</div><div className="comparison-record-main"><b>{row.title}</b><span>{row.artist_names || 'Artista non indicato'}{row.format ? ` · ${row.format}` : ''}</span><YouTubeLink title={row.title} artist={row.artist_names} compact/></div><div className="comparison-status">{row.i_own_it && row.friend_owns_it ? <span className="status-both"><Check size={13}/> Entrambi</span> : row.friend_owns_it ? <span className="status-missing">A te manca</span> : <span className="status-mine">Ce l’hai tu</span>}{row.friend_owns_it && !row.i_own_it && row.friend_item_id && myItems.length>0 && <button className="comparison-trade-btn" onClick={()=>startTrade(row)}><ArrowLeftRight size={13}/> Proponi scambio</button>}</div></article>)}</div> : <div className="empty-state compact-empty"><Disc3 size={25}/><b>Le collezioni sono vuote</b><p>Aggiungete i vostri dischi alla sezione La mia collezione.</p></div>}
+          </div> : <div className="friend-chat-panel"><div className="friend-chat-messages">{messages.length ? messages.map(message => <div className={`friend-chat-bubble ${message.sender_id === user.id ? 'mine' : ''}`} key={message.message_id}><span>{message.message}</span><small>{message.sender_name} · {new Date(message.created_at).toLocaleString('it-IT', {dateStyle:'short', timeStyle:'short'})}</small></div>) : <div className="chat-empty"><MessageCircle size={24}/><b>Inizia la conversazione</b><span>Organizzate qui il vostro prossimo scambio di vinili.</span></div>}</div><form className="friend-chat-compose" onSubmit={sendMessage}><textarea rows="2" value={messageDraft} onChange={event => setMessageDraft(event.target.value)} maxLength={2000} placeholder={`Scrivi a ${selectedFriend.friend_name}…`} disabled={busy}/><button className="primary-btn" type="submit" disabled={busy || !messageDraft.trim()}><Send size={16}/> Invia</button></form></div>}
+        </> : <div className="empty-state friend-detail-empty"><div className="empty-icon"><MessageCircle size={30}/></div><h3>Un archivio da condividere</h3><p>Seleziona un amico per confrontare i dischi, trovare doppioni e parlare direttamente nella chat interna.</p></div>}
+      </section>
+    </div>
+    <p className="friend-privacy-note"><LockKeyhole size={14}/> La collezione è confrontabile solo tra amici accettati. Prezzi, valori stimati e note personali restano privati. La condivisione dell’email è facoltativa.</p>
+    {tradeTarget && <div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setTradeTarget(null);}}><section className="modal-card trade-proposal-modal"><header className="modal-head"><div><span className="eyebrow">PROPOSTA TRA AMICI</span><h2>Proponi uno scambio</h2><p className="muted">Questo disco appartiene a {selectedFriend?.friend_name || 'al tuo amico'}.</p></div><button className="icon-btn" onClick={()=>setTradeTarget(null)} disabled={busy}><X size={20}/></button></header><form className="album-form" onSubmit={sendFriendTradeOffer}><div className="trade-proposal-target"><div className="trade-record-cover">{tradeTarget.cover_url ? <img src={tradeTarget.cover_url} alt={tradeTarget.title}/> : <Cover album={{title:tradeTarget.title}}/>}</div><div><b>{tradeTarget.title}</b><span>{tradeTarget.artist_names || 'Artista non indicato'}{tradeTarget.format ? ` · ${tradeTarget.format}` : ''}</span><small>Collezione di {selectedFriend?.friend_name || 'amico'}</small></div></div><label>Il tuo disco da offrire<select value={tradeOfferedItemId} onChange={event=>setTradeOfferedItemId(event.target.value)} required>{myItems.map(item=><option key={item.id} value={String(item.id)}>{[item.album.title,item.artistNames.join(', '),item.format,item.release.edition].filter(Boolean).join(' · ')}</option>)}</select></label><label>Messaggio iniziale (facoltativo)<textarea rows="3" maxLength={1200} value={tradeMessageDraft} onChange={event=>setTradeMessageDraft(event.target.value)} placeholder="Es. Ti va uno scambio alla pari?"/></label>{error && <div className="notice error"><AlertCircle size={16}/>{error}</div>}<footer className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setTradeTarget(null)} disabled={busy}>Annulla</button><button type="submit" className="primary-btn" disabled={busy||!tradeOfferedItemId}>{busy ? <LoaderCircle size={17} className="spin"/> : <Send size={16}/>} Invia proposta</button></footer></form></section></div>}
+  </div>;
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -840,6 +1093,7 @@ function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [showMineOnly, setShowMineOnly] = useState(false);
@@ -916,6 +1170,7 @@ function App() {
 
   const isCollection = activeTab==='collection';
   const isTrades = activeTab==='trades';
+  const isFriends = activeTab==='friends';
   const listing = isCollection ? collectionItems.filter(item=>{
     const q=query.trim().toLowerCase(); const search=[item.album.title,...item.artistNames,item.genreName,item.format,item.release.label,item.release.catalog_number].filter(Boolean).join(' ').toLowerCase();
     return !q||search.includes(q);
@@ -927,27 +1182,30 @@ function App() {
         <button className={activeTab==='catalog'?'active':''} onClick={()=>setActiveTab('catalog')}><Library size={19}/><span>Catalogo</span><span className="nav-count">{albums.length}</span></button>
         <button className={activeTab==='collection'?'active':''} onClick={()=>setActiveTab('collection')}><DiscAlbum size={19}/><span>La mia collezione</span><span className="nav-count">{myItems.length}</span></button>
         <button className={activeTab==='trades'?'active':''} onClick={()=>setActiveTab('trades')}><ArrowLeftRight size={19}/><span>Scambi</span></button>
+        <button className={activeTab==='friends'?'active':''} onClick={()=>setActiveTab('friends')}><Users size={19}/><span>Amici e chat</span></button>
       </nav>
       <div className="sidebar-note"><div className="note-icon"><Music2 size={18}/></div><p>La musica passa.<br/><b>I dischi restano.</b></p><span>Il piacere di collezionare, senza fretta.</span></div>
       <div className="sidebar-user"><div className="avatar">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</div><div className="user-details"><b>{session.user.user_metadata?.display_name||session.user.email?.split('@')[0]}</b><span>{session.user.email}</span></div><button className="icon-btn logout-btn" title="Esci" onClick={signOut}><LogOut size={17}/></button></div>
-      <div className="app-version">VINILI v1.3.1 · 21/10/2026</div>
+      <div className="app-version">VINILI v1.4.0 · 21/10/2026</div>
     </aside>
 
-    <main className="main-content"><header className="topbar"><div className="crumb"><span>VINILI</span><span className="crumb-slash">/</span><b>{isCollection?'LA MIA COLLEZIONE':isTrades?'SCAMBI E CONFRONTI':'CATALOGO MUSICALE'}</b></div><div className="top-actions"><span className="online-dot"/> ARCHIVIO SINCRONIZZATO <button className="avatar avatar-small" onClick={signOut} title="Esci">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</button></div></header>
+    <main className="main-content"><header className="topbar"><div className="crumb"><span>VINILI</span><span className="crumb-slash">/</span><b>{isCollection?'LA MIA COLLEZIONE':isTrades?'SCAMBI E CONFRONTI':isFriends?'AMICI E CHAT':'CATALOGO MUSICALE'}</b></div><div className="top-actions"><span className="online-dot"/> ARCHIVIO SINCRONIZZATO <button className="avatar avatar-small" onClick={signOut} title="Esci">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</button></div></header>
       <section className="page-wrap">
-        {isTrades ? <TradeCenter user={session.user} myItems={collectionItems} onRefresh={loadData}/> : <>
+        {isTrades ? <TradeCenter user={session.user} myItems={collectionItems} onRefresh={loadData}/> : isFriends ? <FriendsCenter user={session.user} myItems={collectionItems} onRefresh={loadData}/> : <>
         <div className="welcome-row"><div><span className="eyebrow">{isCollection?'IL TUO TESORO PERSONALE':'ESPLORA, CERCA, RICORDA'}</span><h1>{isCollection?'La tua collezione':'Il catalogo dei vinili'}<span className="title-period">.</span></h1><p className="page-subtitle">{isCollection?'Ogni copia racconta qualcosa. Qui c’è la tua storia musicale.':'Un archivio condiviso per scoprire album e custodire le tue copie.'}</p></div><div className="welcome-actions"><button className="secondary-btn import-launch-btn" onClick={()=>setShowImport(true)}><Upload size={17}/> Importa catalogo</button><button className="primary-btn add-btn" onClick={()=>setShowAdd(true)}><Plus size={18}/> Aggiungi vinile</button></div></div>
         <div className="stats-grid"><div className="stat-card"><div className="stat-top"><span>DISCHI A CATALOGO</span><Library size={18}/></div><div className="stat-value">{albums.length.toLocaleString('it-IT')}<span className="stat-caption">album</span></div><div className="stat-foot">Archivio condiviso</div></div><div className="stat-card"><div className="stat-top"><span>ARTISTI</span><Users size={18}/></div><div className="stat-value">{artists.length.toLocaleString('it-IT')}<span className="stat-caption">artisti</span></div><div className="stat-foot">Voci della tua musica</div></div><div className="stat-card"><div className="stat-top"><span>LA MIA COLLEZIONE</span><Disc3 size={18}/></div><div className="stat-value">{myItems.length.toLocaleString('it-IT')}<span className="stat-caption">copie</span></div><div className="stat-foot">Dischi che possiedi</div></div><div className="stat-card stat-highlight"><div className="stat-top"><span>VALORE STIMATO</span><Wallet size={18}/></div><div className="stat-value money-value">{formatMoney(collectionValue)}</div><div className="stat-foot">Somma dei valori inseriti</div></div></div>
+        <div className="catalog-meaning-note"><div><b>Catalogo = schede degli album</b><span>Conta le schede registrate nell’archivio condiviso. Un album resta una sola scheda anche se più utenti lo possiedono.</span></div><div><b>La mia collezione = le tue copie</b><span>Conta le edizioni che hai aggiunto al tuo account. È un conteggio personale, non il totale di tutto il catalogo.</span></div></div>
         <section className="catalog-section"><div className="catalog-head"><div><h2>{isCollection?'Le tue copie':'Esplora i dischi'} <span className="result-count">{listing.length}</span></h2><p>{isCollection?'Edizioni e dettagli della tua collezione':'Cerca un titolo, un artista, un anno o un’etichetta.'}</p></div><div className="catalog-tools"><label className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cerca nel catalogo…"/><kbd>⌘ K</kbd>{query&&<button onClick={()=>setQuery('')} aria-label="Pulisci ricerca"><X size={15}/></button>}</label>{!isCollection && <div className="view-switch" aria-label="Visualizzazione catalogo"><button className={viewMode==='grid'?'selected':''} onClick={()=>setViewMode('grid')} title="Vista schede">Schede</button><button className={viewMode==='table'?'selected':''} onClick={()=>setViewMode('table')} title="Vista elenco tipo foglio di calcolo">Elenco</button></div>}<button className={`filter-btn ${showFilters?'selected':''}`} onClick={()=>setShowFilters(s=>!s)}><SlidersHorizontal size={17}/> Filtri</button></div></div>
           {showFilters && !isCollection && <div className="filter-panel"><label>Genere<select value={genreFilter} onChange={e=>setGenreFilter(e.target.value)}><option value="all">Tutti i generi</option>{genres.map(g=><option key={g.id} value={g.name}>{g.name}</option>)}</select></label><label>Formato<select value={formatFilter} onChange={e=>setFormatFilter(e.target.value)}><option value="all">Tutti i formati</option>{formats.map(f=><option key={f} value={f}>{f}</option>)}</select></label><label className="check-filter"><input type="checkbox" checked={showMineOnly} onChange={e=>setShowMineOnly(e.target.checked)}/> Solo album che possiedo</label><button className="text-btn" onClick={()=>{setGenreFilter('all');setFormatFilter('all');setShowMineOnly(false)}}>Azzera filtri</button></div>}
           {error&&<div className="notice error page-notice"><AlertCircle size={17}/><span>{error}</span><button className="text-btn" onClick={loadData}><RefreshCw size={15}/> Riprova</button></div>}
           {successMessage&&<div className="notice success page-notice"><Check size={17}/>{successMessage}<button className="icon-btn" onClick={()=>setSuccessMessage('')}><X size={15}/></button></div>}
-          {loadingData ? <div className="empty-state"><LoaderCircle className="spin" size={30}/><b>Sto aggiornando l’archivio…</b><span>Sincronizzazione con Supabase</span></div> : listing.length ? (!isCollection && viewMode==='table') ? <div className="catalog-table-wrap"><table className="catalog-table"><thead><tr><th>Copertina</th><th>Titolo / artista</th><th>Anno</th><th>Genere</th><th>Edizioni</th><th>Azioni</th></tr></thead><tbody>{shownAlbums.map(album=><tr key={album.id}><td className="table-cover-cell"><div className="table-cover">{album.cover_url ? <img src={album.cover_url} alt={album.title}/> : <Cover album={album}/>}</div></td><td><div className="table-title-line"><b>{album.title}</b><YouTubeLink title={album.title} artist={artistsOf(album)} compact/></div><span className="table-subtitle">{artistsOf(album)}</span></td><td>{album.release_year || '—'}</td><td>{album.genreName || 'Senza genere'}</td><td><div className="table-release-cell">{album.releases.length ? album.releases.map((release)=><span key={release.id}>{[release.format,release.release_year,release.edition].filter(Boolean).join(' · ') || 'Edizione'}</span>) : <span>Da completare</span>}</div></td><td><div className="table-actions"><button className="secondary-btn table-edit-btn" onClick={()=>setEditingAlbum(album)}><Pencil size={14}/> Modifica</button><button className="icon-btn" onClick={()=>setSelectedAlbum(album)} title="Apri scheda"><ArrowUpRight size={16}/></button></div></td></tr>)}</tbody></table></div> : <div className="album-grid">{isCollection ? listing.map(item=><article className="album-card" key={`item-${item.id}`}><div className="album-hit-area" role="button" tabIndex={0} onKeyDown={event=>activateCardOnKey(event,()=>setSelectedAlbum({...item.album,artists:item.artistNames.map(name=>({name})),artistNames:item.artistNames,genreName:item.genreName,releases:[item.release],personalItem:item}))} onClick={()=>setSelectedAlbum({...item.album,artists:item.artistNames.map(name=>({name})),artistNames:item.artistNames,genreName:item.genreName,releases:[item.release],personalItem:item})}><div className="cover-wrap"><Cover album={item.album}/><span className="format-pill">{item.format}</span><span className="owned-badge"><Check size={12}/> IN COLLEZIONE</span></div><div className="album-card-info"><span className="album-genre">{item.genreName}</span><div className="album-title-line"><h3>{item.album.title}</h3><YouTubeLink title={item.album.title} artist={item.artistNames.join(', ')} compact/></div><p>{item.artistNames.join(', ')||'Artista non indicato'}</p><div className="album-card-foot"><span>{item.release.release_year||item.album.release_year||'Anno n.d.'}</span><span>{item.estimated_value?formatMoney(item.estimated_value):'Valore n.d.'}</span></div></div></div><button className="remove-item" title="Rimuovi dalla collezione" onClick={()=>deleteItem(item)}><Trash2 size={15}/></button></article>) : listing.map(album=><article className="album-card" key={album.id}><div className="album-hit-area" role="button" tabIndex={0} onKeyDown={event=>activateCardOnKey(event,()=>setSelectedAlbum(album))} onClick={()=>setSelectedAlbum(album)}><div className="cover-wrap"><Cover album={album}/>{album.releases.length>0&&<span className="format-pill">{album.releases[0].format||'Vinile'}</span>}{album.releases.some(r=>(r.collection_items||[]).some(i=>i.owner_id===session.user.id))&&<span className="owned-badge"><Check size={12}/> IN COLLEZIONE</span>}</div><div className="album-card-info"><span className="album-genre">{album.genreName}</span><div className="album-title-line"><h3>{album.title}</h3><YouTubeLink title={album.title} artist={artistsOf(album)} compact/></div><p>{artistsOf(album)}</p><div className="album-card-foot"><span>{album.release_year||'Anno n.d.'}</span><span>{album.releases.length} {album.releases.length===1?'edizione':'edizioni'}</span></div></div></div></article>)}</div> : <div className="empty-state"><div className="empty-icon"><Disc3 size={31}/></div><h3>{isCollection?'La tua collezione inizia da qui':'Il catalogo è pronto per il primo disco'}</h3><p>{query?'Nessun risultato con questa ricerca. Prova un altro termine.':isCollection?'Aggiungi il tuo primo vinile per iniziare a costruire il tuo archivio personale.':'Aggiungi un album per iniziare a costruire l’archivio condiviso con i tuoi amici.'}</p>{query?<button className="secondary-btn" onClick={()=>setQuery('')}>Pulisci ricerca</button>:<button className="primary-btn" onClick={()=>setShowAdd(true)}><Plus size={17}/> Aggiungi il primo vinile</button>}</div>}
+          {loadingData ? <div className="empty-state"><LoaderCircle className="spin" size={30}/><b>Sto aggiornando l’archivio…</b><span>Sincronizzazione con Supabase</span></div> : listing.length ? (!isCollection && viewMode==='table') ? <div className="catalog-table-wrap"><table className="catalog-table"><thead><tr><th>Copertina</th><th>Titolo / artista</th><th>Anno</th><th>Genere</th><th>Edizioni</th><th>Azioni</th></tr></thead><tbody>{shownAlbums.map(album=><tr key={album.id}><td className="table-cover-cell"><div className="table-cover">{album.cover_url ? <img src={album.cover_url} alt={album.title}/> : <Cover album={album}/>}</div></td><td><div className="table-title-line"><b>{album.title}</b><YouTubeLink title={album.title} artist={artistsOf(album)} compact/></div><span className="table-subtitle">{artistsOf(album)}</span></td><td>{album.release_year || '—'}</td><td>{album.genreName || 'Senza genere'}</td><td><div className="table-release-cell">{album.releases.length ? album.releases.map((release)=><span key={release.id}>{[release.format,release.release_year,release.edition].filter(Boolean).join(' · ') || 'Edizione'}</span>) : <span>Da completare</span>}</div></td><td><div className="table-actions"><button className="secondary-btn table-edit-btn" onClick={()=>setEditingAlbum(album)}><Pencil size={14}/> Modifica</button><button className="icon-btn" onClick={()=>setSelectedAlbum(album)} title="Apri scheda"><ArrowUpRight size={16}/></button></div></td></tr>)}</tbody></table></div> : <div className="album-grid">{isCollection ? listing.map(item=><article className="album-card collection-album-card" key={`item-${item.id}`}><div className="album-hit-area" role="button" tabIndex={0} onKeyDown={event=>activateCardOnKey(event,()=>setSelectedAlbum({...item.album,artists:item.artistNames.map(name=>({name})),artistNames:item.artistNames,genreName:item.genreName,releases:[item.release],personalItem:item}))} onClick={()=>setSelectedAlbum({...item.album,artists:item.artistNames.map(name=>({name})),artistNames:item.artistNames,genreName:item.genreName,releases:[item.release],personalItem:item})}><div className="cover-wrap"><Cover album={item.album}/><span className="format-pill">{item.format}</span><span className="owned-badge"><Check size={12}/> IN COLLEZIONE</span></div><div className="album-card-info"><span className="album-genre">{item.genreName}</span><div className="album-title-line"><h3>{item.album.title}</h3><YouTubeLink title={item.album.title} artist={item.artistNames.join(', ')} compact/></div><p>{item.artistNames.join(', ')||'Artista non indicato'}</p><div className="album-card-foot"><span>{item.release.release_year||item.album.release_year||'Anno n.d.'}</span><span>{item.estimated_value?formatMoney(item.estimated_value):'Valore n.d.'}</span></div></div></div><div className="collection-card-actions"><button className="collection-edit-action" title="Modifica scheda condivisa del disco" onClick={event=>{event.stopPropagation();setEditingAlbum({...item.album,artists:item.artistNames.map(name=>({name})),artistNames:item.artistNames,genreName:item.genreName,releases:[item.release]});}}><Pencil size={14}/><span>Scheda</span></button><button className="collection-edit-action" title="Modifica i dati personali della tua copia" onClick={event=>{event.stopPropagation();setEditingItem(item);}}><SlidersHorizontal size={14}/><span>Copia</span></button><button className="remove-item" title="Rimuovi dalla collezione" onClick={event=>{event.stopPropagation();deleteItem(item);}}><Trash2 size={15}/></button></div></article>) : listing.map(album=><article className="album-card" key={album.id}><div className="album-hit-area" role="button" tabIndex={0} onKeyDown={event=>activateCardOnKey(event,()=>setSelectedAlbum(album))} onClick={()=>setSelectedAlbum(album)}><div className="cover-wrap"><Cover album={album}/>{album.releases.length>0&&<span className="format-pill">{album.releases[0].format||'Vinile'}</span>}{album.releases.some(r=>(r.collection_items||[]).some(i=>i.owner_id===session.user.id))&&<span className="owned-badge"><Check size={12}/> IN COLLEZIONE</span>}</div><div className="album-card-info"><span className="album-genre">{album.genreName}</span><div className="album-title-line"><h3>{album.title}</h3><YouTubeLink title={album.title} artist={artistsOf(album)} compact/></div><p>{artistsOf(album)}</p><div className="album-card-foot"><span>{album.release_year||'Anno n.d.'}</span><span>{album.releases.length} {album.releases.length===1?'edizione':'edizioni'}</span></div></div></div></article>)}</div> : <div className="empty-state"><div className="empty-icon"><Disc3 size={31}/></div><h3>{isCollection?'La tua collezione inizia da qui':'Il catalogo è pronto per il primo disco'}</h3><p>{query?'Nessun risultato con questa ricerca. Prova un altro termine.':isCollection?'Aggiungi il tuo primo vinile per iniziare a costruire il tuo archivio personale.':'Aggiungi un album per iniziare a costruire l’archivio condiviso con i tuoi amici.'}</p>{query?<button className="secondary-btn" onClick={()=>setQuery('')}>Pulisci ricerca</button>:<button className="primary-btn" onClick={()=>setShowAdd(true)}><Plus size={17}/> Aggiungi il primo vinile</button>}</div>}
         </section></>}<footer className="page-footer"><span>VINILI<span className="brand-dot">.</span> — IL PIACERE DI COLLEZIONARE</span><span>CATALOGO CONDIVISO · COLLEZIONI PERSONALI</span></footer>
       </section>
     </main>
     {showImport&&<ImportCatalogModal user={session.user} currentAlbums={albums} onClose={()=>setShowImport(false)} onImported={()=>{setSuccessMessage('Importazione completata. Il catalogo è stato aggiornato.');loadData();}}/>}
     {editingAlbum&&<CatalogEditModal album={editingAlbum} onClose={()=>setEditingAlbum(null)} onSaved={()=>{setEditingAlbum(null);setSuccessMessage('Scheda disco aggiornata.');loadData();}}/>}
+    {editingItem&&<CollectionItemEditModal item={editingItem} user={session.user} onClose={()=>setEditingItem(null)} onSaved={()=>{setEditingItem(null);setSuccessMessage('Dati personali della copia aggiornati.');loadData();}}/>}
     {showAdd&&<AddAlbumModal user={session.user} onClose={()=>setShowAdd(false)} onSaved={()=>{setSuccessMessage('Vinile aggiunto correttamente.');loadData();}}/>}
     {selectedAlbum&&<AlbumDetails album={selectedAlbum} user={session.user} onClose={()=>setSelectedAlbum(null)} onChanged={()=>{setSelectedAlbum(null);loadData();}}/>}
   </div>;
