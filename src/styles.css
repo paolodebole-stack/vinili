@@ -230,3 +230,33 @@
 @media(max-width:940px){.app-version{left:80px}.catalog-table{min-width:820px}.share-panel{align-items:flex-start;flex-wrap:wrap}.share-copy{min-width:calc(100% - 65px)}.share-toggle{margin-left:56px}}
 @media(max-width:650px){.app-version{left:8px;bottom:67px;font-size:8px;padding:4px 6px}.view-switch button{padding:7px 8px}.trade-welcome{align-items:flex-start}.trade-welcome .secondary-btn{padding:8px;font-size:9px;flex-shrink:0}.share-panel{padding:12px;gap:10px}.share-icon{width:35px;height:35px}.share-copy{min-width:calc(100% - 48px)}.share-copy span{font-size:9px}.share-toggle{margin-left:0;width:100%}.trade-search{width:100%;min-width:100%}.trade-record-card{gap:9px;padding:9px}.trade-record-cover{width:82px;height:82px}.trade-record-details h3{font-size:15px}.trade-record-bottom{align-items:flex-start;flex-direction:column}.trade-propose-btn{width:100%}.trade-pair{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);gap:5px}.trade-pair>div{padding:8px}.trade-pair b{font-size:10px}.trade-offer-card{padding:11px}.trade-response-actions .text-btn{margin-left:0}.catalog-edit-modal .modal-head{padding:17px 16px 12px}.catalog-edit-modal .modal-head h2{font-size:24px}.catalog-edit-modal .album-form{padding:0 16px 16px}.catalog-table-wrap{border-radius:8px}}
 @media(max-width:650px){.side-nav{gap:4px}.side-nav button{width:auto;flex:1;min-width:0;gap:5px;padding:9px 4px}.side-nav button span{font-size:9px}.side-nav button svg{width:17px;height:17px}}
+
+/* YouTube quick links beside every visible album/track title */
+.youtube-link{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;width:max-content;max-width:100%;border:1px solid #60413d;border-radius:6px;padding:7px 9px;background:#392321;color:#f0b5ac;text-decoration:none;font-size:10px;font-weight:600;line-height:1.1;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+.youtube-link:hover{background:#57302b;border-color:#b15b4f;color:#fff0ed}
+.youtube-link svg{flex-shrink:0;color:#ff7770}
+.youtube-link-compact{gap:4px;padding:4px 6px;border-radius:5px;font-size:8px;letter-spacing:0;}
+.album-title-line,.table-title-line,.detail-title-line,.trade-record-title-line,.trade-offer-title-line{display:flex;align-items:center;gap:8px;min-width:0}
+.album-title-line{margin:0 0 6px}
+.album-title-line h3{min-width:0;flex:1;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.album-title-line .youtube-link{max-width:82px}
+.table-title-line{justify-content:flex-start;align-items:center;gap:8px;max-width:390px}
+.catalog-table .table-title-line>b{display:block;min-width:0;flex:1;max-width:300px;overflow-wrap:anywhere}
+.table-title-line .youtube-link{margin-left:auto}
+.detail-title-line{align-items:flex-start;justify-content:space-between;gap:12px;margin:11px 0 8px}
+.detail-title-line h2{min-width:0;flex:1;margin:0!important}
+.detail-title-line .youtube-link{margin-top:3px}
+.trade-record-title-line{align-items:flex-start;justify-content:space-between;gap:7px;margin-bottom:6px}
+.trade-record-title-line h3{flex:1;min-width:0;margin:0!important}
+.trade-offer-title-line{align-items:center;gap:7px;flex-wrap:wrap}
+.trade-offer-title-line>b{min-width:0;overflow-wrap:anywhere}
+.album-hit-area{cursor:pointer}
+.album-hit-area:focus-visible{outline:2px solid var(--gold);outline-offset:-3px}
+@media(max-width:650px){
+  .youtube-link-compact{gap:3px;padding:4px 5px;font-size:7px}
+  .album-title-line{gap:4px}
+  .album-title-line h3{font-size:14px!important}
+  .table-title-line{gap:6px}
+  .detail-title-line{gap:8px}
+  .detail-title-line .youtube-link{padding:6px 7px;font-size:9px}
+}
