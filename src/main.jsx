@@ -4,7 +4,7 @@ import {
   Disc3, Search, Plus, SlidersHorizontal, LogOut, Library, DiscAlbum,
   Music2, Users, Wallet, X, Check, LoaderCircle, Upload, Trash2,
   ArrowUpRight, Sparkles, CircleUserRound, Mail, LockKeyhole, ChevronDown,
-  AlertCircle, RefreshCw
+  AlertCircle, RefreshCw, ImagePlus, Globe
 } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { parseCatalogFile, normalizeCatalogText } from './importCatalog';
@@ -726,8 +726,139 @@ function App() {
   </div>;
 }
 
+function CoverManagerModal({ user, album, onClose, onSaved }) {
+  const artists = album.artistNames || (album.artists || []).map((artist) => typeof artist === 'string' ? artist : artist.name).filter(Boolean);
+  const [query, setQuery] = useState(`${artists.join(' ')} ${album.title || ''}`.trim());
+  const [results, setResults] = useState([]);
+  const [selectedOnline, setSelectedOnline] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => () => {
+    if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  function artworkUrl(result) {
+    return (result?.artworkUrl100 || result?.artworkUrl60 || '').replace(/\/\d+x\d+bb(?=\.)/, '/600x600bb');
+  }
+
+  async function searchOnline(event) {
+    event?.preventDefault?.();
+    const searchTerm = query.trim();
+    if (!searchTerm) { setError('Scrivi artista e titolo per cercare una copertina.'); return; }
+    setSearching(true); setError(''); setResults([]); setSelectedOnline(null); setImageFile(null); setPreviewUrl('');
+    try {
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=album&limit=24&country=it`;
+      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`Il servizio di ricerca ha risposto con codice ${response.status}.`);
+      const data = await response.json();
+      const items = (data.results || []).filter((item) => item.collectionName && artworkUrl(item));
+      setResults(items);
+      if (!items.length) setError('Nessuna copertina trovata. Prova una ricerca più breve o carica un’immagine dal dispositivo.');
+    } catch (err) {
+      setError(`Ricerca online non disponibile: ${err?.message || 'errore di rete'}. Puoi comunque caricare una copertina dal dispositivo.`);
+    } finally { setSearching(false); }
+  }
+
+  function chooseOnline(item) {
+    setSelectedOnline(item); setImageFile(null); setPreviewUrl(artworkUrl(item)); setError('');
+  }
+
+  function chooseFile(file) {
+    if (!file) return;
+    setError('');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Scegli un’immagine JPG, PNG o WEBP.'); return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('L’immagine supera 5 MB. Scegli un file più leggero.'); return;
+    }
+    setImageFile(file); setSelectedOnline(null); setPreviewUrl(URL.createObjectURL(file));
+  }
+
+  async function saveCover() {
+    if (!imageFile && !selectedOnline) { setError('Scegli una copertina dalla ricerca o dal dispositivo.'); return; }
+    setSaving(true); setError('');
+    try {
+      let coverUrl = '';
+      if (imageFile) {
+        const extension = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const storagePath = `${user.id}/covers/album-${album.id}-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from('vinyl-covers').upload(storagePath, imageFile, {
+          upsert: false,
+          contentType: imageFile.type || 'image/jpeg',
+          cacheControl: '31536000'
+        });
+        if (uploadError) throw new Error(`Caricamento immagine fallito: ${uploadError.message}. Controlla il bucket vinyl-covers e i relativi permessi.`);
+        coverUrl = supabase.storage.from('vinyl-covers').getPublicUrl(storagePath).data.publicUrl;
+      } else {
+        coverUrl = artworkUrl(selectedOnline);
+      }
+      const { error: updateError } = await supabase.rpc('set_album_cover', {
+        p_album_id: album.id,
+        p_cover_url: coverUrl
+      });
+      if (updateError) {
+        if (/set_album_cover|function|schema cache|Could not find/i.test(updateError.message || '')) {
+          throw new Error('Manca una configurazione di sicurezza in Supabase. Prima di salvare, esegui una sola volta lo script supabase/set_album_cover.sql nel SQL Editor del progetto.');
+        }
+        throw updateError;
+      }
+      onSaved(coverUrl);
+    } catch (err) {
+      setError(err?.message || 'Non è stato possibile salvare la copertina.');
+    } finally { setSaving(false); }
+  }
+
+  return <div className="modal-backdrop cover-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+    <section className="cover-manager-modal" role="dialog" aria-modal="true" aria-label="Aggiungi copertina">
+      <header className="modal-head cover-manager-head">
+        <div><span className="eyebrow">PERSONALIZZA IL CATALOGO</span><h2>Copertina del disco</h2><p className="muted">{album.title} · {artists.join(', ') || 'Artista non indicato'}</p></div>
+        <button className="icon-btn" onClick={onClose} disabled={saving} aria-label="Chiudi"><X size={20}/></button>
+      </header>
+      <div className="cover-manager-body">
+        <section className="cover-search-section">
+          <div className="form-section-label">CERCA ONLINE</div>
+          <form className="cover-search-form" onSubmit={searchOnline}>
+            <label className="cover-search-input"><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Artista e titolo dell’album"/></label>
+            <button className="primary-btn" type="submit" disabled={searching}>{searching ? <LoaderCircle size={16} className="spin"/> : <Globe size={16}/>} Cerca copertine</button>
+          </form>
+          <p className="muted cover-helper">Ricerca nell’archivio musicale Apple/iTunes. Se l’edizione esatta non c’è, puoi usare un’immagine dal dispositivo.</p>
+          {searching && <div className="cover-search-status"><LoaderCircle className="spin" size={20}/> Sto cercando le copertine…</div>}
+          {results.length > 0 && <div className="cover-results" aria-label="Risultati della ricerca">{results.map((item) => {
+            const itemCover = artworkUrl(item);
+            const selected = selectedOnline?.collectionId === item.collectionId && selectedOnline?.trackId === item.trackId && selectedOnline?.collectionName === item.collectionName;
+            return <button type="button" className={`cover-result ${selected ? 'selected' : ''}`} key={`${item.collectionId || item.trackId || item.collectionName}-${item.artistName}`} onClick={() => chooseOnline(item)}>
+              <img src={itemCover} alt={`Copertina ${item.collectionName}`} loading="lazy"/>
+              <span className="cover-result-info"><b>{item.collectionName}</b><span>{item.artistName}</span><small>{item.releaseDate ? new Date(item.releaseDate).getFullYear() : ''}{item.primaryGenreName ? ` · ${item.primaryGenreName}` : ''}</small></span>
+              {selected && <span className="cover-selected-check"><Check size={15}/></span>}
+            </button>;
+          })}</div>}
+        </section>
+        <section className="cover-device-section">
+          <div className="form-section-label">OPPURE CARICA DAL DISPOSITIVO</div>
+          <label className="cover-device-picker"><Upload size={19}/><span><b>Scegli un’immagine</b><small>JPG, PNG o WEBP · massimo 5 MB</small></span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])}/></label>
+        </section>
+        <section className="cover-preview-section">
+          <div className="form-section-label">ANTEPRIMA</div>
+          <div className="cover-preview-card">
+            <div className="cover-preview-image">{previewUrl ? <img src={previewUrl} alt="Anteprima della nuova copertina"/> : <div className="cover-preview-empty"><Disc3 size={34}/><span>Nessuna copertina selezionata</span></div>}</div>
+            <div className="cover-preview-description"><b>{imageFile?.name || selectedOnline?.collectionName || album.title}</b><span>{imageFile ? 'Immagine dal dispositivo' : selectedOnline ? `${selectedOnline.artistName || artists.join(', ')} · copertina online` : 'Seleziona un risultato o carica un’immagine.'}</span></div>
+          </div>
+        </section>
+        {error && <div className="notice error"><AlertCircle size={17}/><span>{error}</span></div>}
+      </div>
+      <footer className="modal-actions cover-manager-actions"><button type="button" className="secondary-btn" onClick={onClose} disabled={saving}>Annulla</button><button type="button" className="primary-btn" onClick={saveCover} disabled={saving || (!imageFile && !selectedOnline)}>{saving ? <LoaderCircle size={17} className="spin"/> : <Check size={17}/>} Salva copertina</button></footer>
+    </section>
+  </div>;
+}
+
 function AlbumDetails({album,user,onClose,onChanged}) {
   const [saving,setSaving]=useState(false);const [error,setError]=useState('');
+  const [showCoverManager, setShowCoverManager] = useState(false);
   const artists = album.artistNames || (album.artists||[]).map(a=>typeof a==='string'?a:a.name).filter(Boolean);
   const personalItem=album.personalItem;
   const releases=album.releases||[];
@@ -741,11 +872,13 @@ function AlbumDetails({album,user,onClose,onChanged}) {
       if(insertError)throw insertError;onChanged();
     }catch(err){setError(friendlyError(err));}finally{setSaving(false);}
   }
-  return <div className="modal-backdrop detail-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="detail-modal"><button className="icon-btn detail-close" onClick={onClose}><X size={20}/></button><div className="detail-cover"><Cover album={album} large/><span className="detail-art-label">VINILI ARCHIVE / {String(album.id||'').padStart(4,'0')}</span></div><div className="detail-content"><span className="eyebrow">{album.genreName||album.genres?.name||'ALBUM'} · SCHEDA DISCO</span><h2>{album.title}</h2><p className="detail-artist">{artists.join(', ')||'Artista non indicato'}</p><div className="detail-meta"><div><span>ANNO ALBUM</span><b>{album.release_year||'—'}</b></div><div><span>EDIZIONI</span><b>{releases.length}</b></div></div>{album.description&&<p className="detail-description">{album.description}</p>}
+  return <><div className="modal-backdrop detail-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="detail-modal"><button className="icon-btn detail-close" onClick={onClose}><X size={20}/></button><div className="detail-cover"><Cover album={album} large/><span className="detail-art-label">VINILI ARCHIVE / {String(album.id||'').padStart(4,'0')}</span></div><div className="detail-content"><span className="eyebrow">{album.genreName||album.genres?.name||'ALBUM'} · SCHEDA DISCO</span><h2>{album.title}</h2><p className="detail-artist">{artists.join(', ')||'Artista non indicato'}</p><div className="detail-meta"><div><span>ANNO ALBUM</span><b>{album.release_year||'—'}</b></div><div><span>EDIZIONI</span><b>{releases.length}</b></div></div><button type="button" className="secondary-btn cover-manage-button" onClick={() => setShowCoverManager(true)}><ImagePlus size={16}/>{album.cover_url ? 'Cambia copertina' : 'Aggiungi copertina'}</button>{album.description&&<p className="detail-description">{album.description}</p>}
       <div className="form-section-label">EDIZIONI DEL DISCO</div>{releases.length? <div className="release-list">{releases.map(rel=>{const owned=(rel.collection_items||[]).some(i=>i.owner_id===user.id)||(personalItem&&personalItem.release?.id===rel.id);return <div className="release-row" key={rel.id}><div className="release-disc"><Disc3 size={19}/></div><div className="release-info"><b>{rel.format||'Vinile'}{rel.edition?` · ${rel.edition}`:''}</b><span>{[rel.release_year,rel.label,rel.catalog_number,rel.country].filter(Boolean).join(' · ')||'Dettagli stampa da completare'}</span></div>{owned?<span className="owned-inline"><Check size={14}/> Tuo</span>:<button className="add-icon-btn" disabled={saving} onClick={()=>addRelease(rel)} title="Aggiungi alla collezione"><Plus size={17}/></button>}</div>})}</div>:<p className="muted">Nessuna edizione registrata per questo album.</p>}
       {personalItem&&<div className="personal-details"><span className="eyebrow">LA TUA COPIA</span><div><span>Disco</span><b>{personalItem.vinyl_condition||'—'}</b></div><div><span>Copertina</span><b>{personalItem.sleeve_condition||'—'}</b></div><div><span>Prezzo d’acquisto</span><b>{personalItem.purchase_price!=null?money(personalItem.purchase_price):'—'}</b></div><div><span>Valore stimato</span><b>{personalItem.estimated_value!=null?money(personalItem.estimated_value):'—'}</b></div>{personalItem.notes&&<p>{personalItem.notes}</p>}</div>}
       {error&&<div className="notice error"><AlertCircle size={16}/>{error}</div>}<button className="secondary-btn full-btn" onClick={onClose}>Chiudi scheda</button>
-    </div></section></div>;
+    </div></section></div>
+    {showCoverManager && <CoverManagerModal user={user} album={album} onClose={() => setShowCoverManager(false)} onSaved={() => { setShowCoverManager(false); onChanged(); }} />}
+  </>;
 }
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);
