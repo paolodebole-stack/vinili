@@ -32,3 +32,33 @@
 .vinili-feature-toast{position:fixed;z-index:100001;bottom:24px;left:50%;transform:translate(-50%,15px);opacity:0;pointer-events:none;max-width:min(620px,calc(100vw - 30px));padding:12px 16px;border:1px solid #514631;background:#1b1d19;color:#f4f0e9;box-shadow:0 10px 32px #0007;border-radius:10px;font:12px/1.5 'DM Sans',sans-serif;transition:opacity .18s,transform .18s}
 .vinili-feature-toast.is-visible{opacity:1;transform:translate(-50%,0)}
 @media(max-width:760px){.vinili-preferences-trigger{font-size:0;width:35px;height:35px;padding:0;margin-right:4px}.vinili-preferences-trigger span:first-child{font-size:17px}.vinili-feature-modal{padding:20px 17px;border-radius:15px}.vinili-feature-head h2{font-size:24px}.vinili-feature-card{gap:11px}.vinili-feature-actions>*{flex:1}.vinili-ownership-row{padding:0 9px 10px}.collection-card-actions .vinili-ownership-toggle{font-size:9px;padding:7px 8px}}
+
+/* Correzione mobile: il comando di possesso deve restare visibile nella scheda collezione. */
+@media (max-width: 760px) {
+  .collection-card-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 7px;
+    padding: 0 9px 10px;
+    min-width: 0;
+  }
+  .collection-card-actions .vinili-ownership-toggle {
+    grid-column: 1 / -1;
+    order: -1;
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    margin: 0;
+    padding: 9px 8px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .collection-card-actions > button:not(.vinili-ownership-toggle) {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 8px 5px;
+    font-size: 10px;
+  }
+}
