@@ -1,0 +1,14 @@
+{
+  "name": "VINILI — Archivio musicale",
+  "short_name": "VINILI",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#121312",
+  "theme_color": "#121312",
+  "description": "Il tuo archivio interattivo di dischi in vinile.",
+  "icons": [
+    { "src": "./vinili-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./vinili-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
