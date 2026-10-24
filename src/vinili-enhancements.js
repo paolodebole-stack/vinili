@@ -143,7 +143,6 @@ if (supabase && typeof document !== 'undefined') {
         button.title = owned ? 'Vinile segnato come mancante' : 'Vinile aggiunto alla tua collezione';
         const badge = button.closest('.album-card')?.querySelector('.owned-badge');
         if (badge) badge.hidden = owned;
-        // La ricarica sincronizza statistiche, scheda e la lista personale con Supabase.
         window.setTimeout(() => window.location.reload(), 450);
       } catch (error) {
         console.error('VINILI: aggiornamento possesso fallito', error);
@@ -284,9 +283,17 @@ if (supabase && typeof document !== 'undefined') {
       const feedback = modal.querySelector('.vinili-feature-feedback');
       try {
         const result = await requestViniliPushTest(supabase);
-        feedback.textContent = result.sent > 0
-          ? `Prova inviata al dispositivo (${result.sent} invio/i confermato/i${result.failed ? `, ${result.failed} non riusciti` : ''}).`
-          : 'La funzione risponde, ma non trova ancora dispositivi abbonati. Attiva prima le notifiche su questo dispositivo.';
+        const found = Number(result.found ?? 0);
+        const sent = Number(result.sent ?? 0);
+        const failed = Number(result.failed ?? 0);
+        const cleaned = Number(result.cleaned ?? 0);
+        if (sent > 0) {
+          feedback.textContent = `Dispositivi trovati: ${found}. Invii riusciti: ${sent}. Invii falliti: ${failed}.${cleaned ? ` Abbonamenti scaduti rimossi: ${cleaned}.` : ''}`;
+        } else if (found === 0) {
+          feedback.textContent = 'Diagnostica push: Supabase non trova abbonamenti associati al tuo account (dispositivi trovati: 0). Premi “Attiva notifiche”, attendi la conferma e riprova.';
+        } else {
+          feedback.textContent = `Diagnostica push: dispositivi trovati ${found}, invii riusciti 0, invii falliti ${failed}.${cleaned ? ` Abbonamenti scaduti rimossi: ${cleaned}.` : ''} Il dispositivo è registrato ma il servizio push rifiuta l’invio. Controlliamo i log Supabase.`;
+        }
       } catch (error) { feedback.textContent = error?.message || String(error); }
     });
     modal.querySelector('[data-disable-push]').addEventListener('click', async () => {
@@ -393,11 +400,9 @@ if (supabase && typeof document !== 'undefined') {
       const sequence = ++actionSequence;
       let before;
       try {
-        // Usa la cache già letta dalla schermata, per avere il conteggio precedente al salvataggio.
         if (catalogCache) before = { albums: catalogCache.length, releases: catalogCache.reduce((sum, album) => sum + (album.releases || []).length, 0) };
         else before = await countCatalog();
       } catch { return; }
-      // Aspetta che il modulo abbia completato gli inserimenti multipli prima di inviare una sola push.
       for (let attempt = 0; attempt < 8; attempt++) {
         await new Promise((resolve) => window.setTimeout(resolve, attempt === 0 ? 7000 : 2500));
         if (sequence !== actionSequence) return;
