@@ -9,3 +9,13 @@ export const supabase = isSupabaseConfigured
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     })
   : null;
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        experimental: { passkey: true },
+      },
+    })
+  : null;
