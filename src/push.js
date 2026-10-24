@@ -1,5 +1,5 @@
 // La chiave pubblica VAPID è destinata al browser. La chiave privata resta nei secret Supabase.
-export const VAPID_PUBLIC_KEY = 'BJ_ibrtlsvE-r5yc-ojIuReuz7MVXn4W8ysZp1HAMXDsiWTvMoR-BEdUmIEdc8GpnWMo_k50V0bfV57DM2UtmXc';
+export const VAPID_PUBLIC_KEY = 'BOyBK76XpTsltaGXENSZTBa1tVrYN7uXfRj1heCdc-mYiSAREsm_f99NgB6iojjiStKOeZIgC4p7ZozUxzrA6-w';
 
 export function urlBase64ToUint8Array(value) {
   const padding = '='.repeat((4 - (value.length % 4)) % 4);
