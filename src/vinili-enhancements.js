@@ -171,7 +171,7 @@ if (supabase && typeof document !== 'undefined') {
   async function enhanceOwnershipControls() {
     if (!currentSession?.user || !document.querySelector('.main-content')) return;
     const heading = document.querySelector('.topbar .crumb b')?.textContent || '';
-    if (!/CATALOGO MUSICALE|LA MIA COLLEZIONE/i.test(heading)) return;
+    if (!/LA MIA COLLEZIONE/i.test(heading)) return;
     let records;
     try { records = await getCatalog(); }
     catch (error) { console.warn('VINILI: controllo possesso non disponibile', error); return; }
