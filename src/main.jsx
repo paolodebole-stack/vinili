@@ -1017,6 +1017,24 @@ function FriendsCenter({ user, myItems, onRefresh }) {
     finally { setBusy(false); }
   }
 
+  async function removeFriend(friend) {
+    if (!friend?.friendship_id) return;
+    const confirmed = window.confirm(`Vuoi rimuovere ${friend.friend_name} dagli amici? Potrai inviare nuovamente la richiesta per rifare il test delle notifiche.`);
+    if (!confirmed) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const { error: removeError } = await supabase.rpc('remove_vinyl_friend', { p_friendship_id: friend.friendship_id });
+      if (removeError) throw removeError;
+      setSelectedFriendId('');
+      setActivePanel('compare');
+      setMessages([]);
+      setComparison([]);
+      setNotice(`Hai rimosso ${friend.friend_name} dagli amici. Ora puoi inviare di nuovo la richiesta.`);
+      await loadFriends();
+    } catch (err) { setError(friendlyError(err)); }
+    finally { setBusy(false); }
+  }
+
   async function toggleShareEmail() {
     setBusy(true); setError(''); setNotice('');
     try {
@@ -1089,7 +1107,7 @@ function FriendsCenter({ user, myItems, onRefresh }) {
       </section>
       <section className="friend-detail-panel">
         {selectedFriend ? <>
-          <div className="friend-detail-head"><div className="friend-avatar large"><Users size={21}/></div><div><span className="eyebrow">AMICIZIA CONFERMATA</span><h2>{selectedFriend.friend_name}</h2><p>{selectedFriend.friend_email ? selectedFriend.friend_email : selectedFriend.friend_username ? `@${selectedFriend.friend_username}` : 'Collezionista VINILI'}</p></div></div>
+          <div className="friend-detail-head"><div className="friend-avatar large"><Users size={21}/></div><div className="friend-detail-title"><span className="eyebrow">AMICIZIA CONFERMATA</span><h2>{selectedFriend.friend_name}</h2><p>{selectedFriend.friend_email ? selectedFriend.friend_email : selectedFriend.friend_username ? `@${selectedFriend.friend_username}` : 'Collezionista VINILI'}</p></div><button className="secondary-btn" onClick={() => removeFriend(selectedFriend)} disabled={busy}>Rimuovi amicizia</button></div>
           <div className="friend-panel-switch"><button className={activePanel === 'compare' ? 'selected' : ''} onClick={() => setActivePanel('compare')}><DiscAlbum size={16}/> Confronta collezioni</button><button className={activePanel === 'chat' ? 'selected' : ''} onClick={() => setActivePanel('chat')}><MessageCircle size={16}/> Chat</button></div>
           {activePanel === 'compare' ? <div className="friend-compare-view"><div className="compare-summary"><div><b>{compareMissing.length}</b><span>Edizioni che ha e ti mancano</span></div><div><b>{compareOverlap.length}</b><span>Edizioni possedute da entrambi</span></div><div><b>{compareMineOnly.length}</b><span>Edizioni che hai e mancano all’amico</span></div></div>
             {compareLoading ? <div className="empty-state compact-empty"><LoaderCircle className="spin" size={24}/><b>Confronto in corso…</b></div> : comparison.length ? <div className="comparison-record-list">{comparison.map(row => <article className="comparison-record-row" key={`${row.release_id}-${row.album_id}`}><div className="comparison-cover">{row.cover_url ? <img src={row.cover_url} alt={row.title}/> : <Cover album={{title:row.title}}/>}</div><div className="comparison-record-main"><b>{row.title}</b><span>{row.artist_names || 'Artista non indicato'}{row.format ? ` · ${row.format}` : ''}</span><YouTubeLink title={row.title} artist={row.artist_names} compact/></div><div className="comparison-status">{row.i_own_it && row.friend_owns_it ? <span className="status-both"><Check size={13}/> Entrambi</span> : row.friend_owns_it ? <span className="status-missing">A te manca</span> : <span className="status-mine">Ce l’hai tu</span>}{row.friend_owns_it && !row.i_own_it && row.friend_item_id && myItems.length>0 && <button className="comparison-trade-btn" onClick={()=>startTrade(row)}><ArrowLeftRight size={13}/> Proponi scambio</button>}</div></article>)}</div> : <div className="empty-state compact-empty"><Disc3 size={25}/><b>Le collezioni sono vuote</b><p>Aggiungete i vostri dischi alla sezione La mia collezione.</p></div>}
