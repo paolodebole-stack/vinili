@@ -10,6 +10,18 @@ import { isSupabaseConfigured, supabase } from './supabase';
 import { parseCatalogFile, normalizeCatalogText } from './importCatalog';
 import './styles.css';
 
+// Notifiche push VINILI: un errore di push non deve bloccare l'azione principale.
+async function sendViniliPush(payload) {
+  try {
+    const { data, error } = await supabase.functions.invoke('vinili-push', { body: payload });
+    if (error) console.warn('VINILI push non inviata:', error.message);
+    return data ?? null;
+  } catch (error) {
+    console.warn('VINILI push non inviata:', error);
+    return null;
+  }
+}
+
 const CONDITION_OPTIONS = ['Mint (M)', 'Near Mint (NM)', 'Very Good Plus (VG+)', 'Very Good (VG)', 'Good (G)', 'Poor (P)'];
 const FORMATS = ['Vinile', 'LP', '12"', '10"', '7"', '45 giri', '33 giri', 'EP', 'Box set'];
 
@@ -131,6 +143,7 @@ function AddAlbumModal({ user, onClose, onSaved }) {
       const item = {owner_id:user.id, release_id:release.id, vinyl_condition:form.vinyl_condition, sleeve_condition:form.sleeve_condition, purchase_price:form.purchase_price ? Number(form.purchase_price):null, estimated_value:form.estimated_value ? Number(form.estimated_value):null, purchase_date:form.purchase_date||null, notes:form.notes.trim()||null};
       const {error: itemError} = await supabase.from('collection_items').insert(item);
       if (itemError) throw itemError;
+      await sendViniliPush({ action: 'catalog-new', artist: form.artist.trim(), title: form.title.trim(), sender_id: user.id });
       onSaved(); onClose();
     } catch (err) {
       setError(friendlyError(err));
@@ -824,6 +837,9 @@ function TradeCenter({ user, myItems, onRefresh }) {
         p_message: offerMessage.trim() || null
       });
       if (offerError) throw offerError;
+      if (target.owner_id) {
+        await sendViniliPush({ action: 'trade-offer', recipient_id: target.owner_id, sender_id: user.id, title: target.album_title });
+      }
       setTarget(null); setNotice('Proposta inviata. L’altro collezionista può accettare, rifiutare o rispondere con una controproposta.');
       await load();
     } catch (err) { setError(friendlyError(err)); }
@@ -837,6 +853,9 @@ function TradeCenter({ user, myItems, onRefresh }) {
     try {
       const { error: responseError } = await supabase.rpc('respond_trade_offer', { p_offer_id: Number(offer.offer_id), p_action: action, p_message: message || null });
       if (responseError) throw responseError;
+      if (offer.other_user_id) {
+        await sendViniliPush({ action: 'trade-response', recipient_id: offer.other_user_id, sender_id: user.id, response: action });
+      }
       setMessageDrafts((old) => ({ ...old, [offer.offer_id]: '' }));
       setNotice(action === 'accept' ? 'Accordo registrato. Il trasferimento fisico dei dischi va concordato direttamente tra voi.' : action === 'reject' ? 'Proposta rifiutata.' : action === 'withdraw' ? 'Proposta ritirata.' : 'Controproposta inviata.');
       await load();
@@ -975,6 +994,9 @@ function FriendsCenter({ user, myItems, onRefresh }) {
         not_found: 'Non ho trovato un account con questa email. Verifica l’indirizzo e riprova.'
       };
       setNotice(messagesByResult[result?.result] || 'Richiesta elaborata.');
+      if (result?.result === 'sent' && result?.target_id) {
+        await sendViniliPush({ action: 'friend-request', recipient_id: result.target_id, sender_id: user.id });
+      }
       setEmailDraft('');
       await loadFriends();
     } catch (err) { setError(friendlyError(err)); }
@@ -986,6 +1008,9 @@ function FriendsCenter({ user, myItems, onRefresh }) {
     try {
       const { error: answerError } = await supabase.rpc('respond_vinyl_friend_request', { p_friendship_id: friend.friendship_id, p_action: action });
       if (answerError) throw answerError;
+      if (action === 'accept' && friend.friend_id) {
+        await sendViniliPush({ action: 'friend-accepted', recipient_id: friend.friend_id, sender_id: user.id });
+      }
       setNotice(action === 'accept' ? `Ora sei amico di ${friend.friend_name}.` : action === 'reject' ? 'Richiesta rifiutata.' : 'Richiesta annullata.');
       await loadFriends();
     } catch (err) { setError(friendlyError(err)); }
@@ -1014,6 +1039,7 @@ function FriendsCenter({ user, myItems, onRefresh }) {
     try {
       const { error: sendError } = await supabase.rpc('send_vinyl_friend_message', { p_friendship_id: friendRow.friendship_id, p_message: messageDraft.trim() });
       if (sendError) throw sendError;
+      await sendViniliPush({ action: 'friend-message', recipient_id: friendRow.friend_id, sender_id: user.id, message: messageDraft.trim() });
       setMessageDraft('');
       await loadMessages(selectedFriendId);
     } catch (err) { setError(friendlyError(err)); }
