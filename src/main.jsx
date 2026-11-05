@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Disc3, Search, Plus, SlidersHorizontal, LogOut, Library, DiscAlbum,
@@ -1142,6 +1142,11 @@ function App() {
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
+  const [offlineData, setOfflineData] = useState(false);
+  const [lastSyncAt, setLastSyncAt] = useState(() => {
+    try { return localStorage.getItem('vinili-last-sync') || ''; } catch { return ''; }
+  });
 
   useEffect(()=>{
     if (!supabase) { setAuthLoading(false); return; }
@@ -1153,7 +1158,34 @@ function App() {
 
   const loadData = useCallback(async()=>{
     if (!session?.user) return;
+    const cacheKey = `vinili-offline-data-v1:${session.user.id}`;
+    const applySnapshot = (snapshot, fromOffline = false) => {
+      const albumData = snapshot?.albums || [];
+      const itemData = snapshot?.items || [];
+      const cleaned = albumData.map(album=>{
+        const albumArtists=(album.album_artists||[]).map(link=>link.artists).filter(Boolean);
+        const releases=(album.releases||[]).map(rel=>({...rel, collection_items:(rel.collection_items||[])}));
+        return {...album, artists:albumArtists, artistNames:albumArtists.map(a=>a.name), genreName:album.genres?.name||'Senza genere', releases};
+      });
+      setAlbums(cleaned);setMyItems(itemData);setArtists(snapshot?.artists||[]);setGenres(snapshot?.genres||[]);
+      setSelectedAlbum(prev=>prev ? cleaned.find(a=>a.id===prev.id)||null : null);
+      setOfflineData(fromOffline);
+      if (snapshot?.savedAt) {
+        setLastSyncAt(snapshot.savedAt);
+        try { localStorage.setItem('vinili-last-sync', snapshot.savedAt); } catch {}
+      }
+    };
+    const readSnapshot = () => {
+      try { const raw = localStorage.getItem(cacheKey); return raw ? JSON.parse(raw) : null; } catch { return null; }
+    };
     setLoadingData(true);setError('');
+    if (!navigator.onLine) {
+      const cached = readSnapshot();
+      if (cached) applySnapshot(cached, true);
+      else setError('Non câ€™Ã¨ una copia offline di questo archivio. Collegati a Internet e attendi la prima sincronizzazione.');
+      setLoadingData(false);
+      return;
+    }
     try {
       const [albumRes, itemRes, artistRes, genreRes] = await Promise.all([
         supabase.from('albums').select('id,title,release_year,cover_url,description,created_at,genres(id,name),album_artists(artist_role,artists(id,name,country)),releases(id,format,label,catalog_number,release_year,country,edition,collection_items(id,owner_id,vinyl_condition,sleeve_condition,purchase_price,estimated_value,purchase_date,notes))').order('title'),
@@ -1162,20 +1194,27 @@ function App() {
         supabase.from('genres').select('id,name').order('name')
       ]);
       for (const r of [albumRes,itemRes,artistRes,genreRes]) if (r.error) throw r.error;
-      const cleaned = (albumRes.data||[]).map(album=>{
-        const albumArtists=(album.album_artists||[]).map(link=>link.artists).filter(Boolean);
-        const releases=(album.releases||[]).map(rel=>({...rel, collection_items:(rel.collection_items||[])}));
-        return {...album, artists:albumArtists, artistNames:albumArtists.map(a=>a.name), genreName:album.genres?.name||'Senza genere', releases};
-      });
-      const ownedIds = new Set((itemRes.data||[]).map(i=>String(i.releases?.album_id || '')));
-      // Album detail includes current user's collection rows when RLS is set to owner-only.
-      setAlbums(cleaned);setMyItems(itemRes.data||[]);setArtists(artistRes.data||[]);setGenres(genreRes.data||[]);
-      setSelectedAlbum(prev=>prev ? cleaned.find(a=>a.id===prev.id)||null : null);
-    } catch (err) { setError(friendlyError(err)); }
-    finally { setLoadingData(false); }
+      const snapshot = { albums:albumRes.data||[], items:itemRes.data||[], artists:artistRes.data||[], genres:genreRes.data||[], savedAt:new Date().toISOString() };
+      try { localStorage.setItem(cacheKey, JSON.stringify(snapshot)); } catch (cacheError) { console.warn('VINILI: cache locale non aggiornata', cacheError); }
+      applySnapshot(snapshot, false);
+    } catch (err) {
+      const cached = readSnapshot();
+      if (cached) {
+        applySnapshot(cached, true);
+        setError('Connessione non disponibile: stai consultando i dati dellâ€™ultima sincronizzazione.');
+      } else setError(friendlyError(err));
+    } finally { setLoadingData(false); }
   },[session?.user?.id]);
 
-  useEffect(()=>{if(session?.user){loadData();ensureProfile(session.user).catch(()=>{});}},[session?.user?.id,loadData]);
+  useEffect(() => {
+    const online = () => { setIsOnline(true); if (session?.user) loadData(); };
+    const offline = () => { setIsOnline(false); };
+    window.addEventListener('online', online);
+    window.addEventListener('offline', offline);
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
+  }, [loadData, session?.user?.id]);
+
+  useEffect(()=>{if(session?.user){loadData();if(navigator.onLine) ensureProfile(session.user).catch(()=>{});}},[session?.user?.id,loadData]);
   useEffect(() => { const handler = (event) => { const found = albums.find((album) => String(album.id) === String(event.detail?.albumId)); if (found) setEditingAlbum(found); }; window.addEventListener('vinili:edit-album', handler); return () => window.removeEventListener('vinili:edit-album', handler); }, [albums]);
 
   async function ensureProfile(user) {
@@ -1233,7 +1272,7 @@ function App() {
       <div className="app-version">VINILI v1.4.0 · 21/10/2026</div>
     </aside>
 
-    <main className="main-content"><header className="topbar"><div className="crumb"><span>VINILI</span><span className="crumb-slash">/</span><b>{isCollection?'LA MIA COLLEZIONE':isTrades?'SCAMBI E CONFRONTI':isFriends?'AMICI E CHAT':'CATALOGO MUSICALE'}</b></div><div className="top-actions"><span className="online-dot"/> ARCHIVIO SINCRONIZZATO <button className="avatar avatar-small" onClick={signOut} title="Esci">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</button></div></header>
+    <main className="main-content"><header className="topbar"><div className="crumb"><span>VINILI</span><span className="crumb-slash">/</span><b>{isCollection?'LA MIA COLLEZIONE':isTrades?'SCAMBI E CONFRONTI':isFriends?'AMICI E CHAT':'CATALOGO MUSICALE'}</b></div><div className="top-actions"><span className={`online-dot ${isOnline ? "" : "offline-dot"}`}/>{!isOnline ? " OFFLINE Â· SOLA LETTURA" : (offlineData ? " CONNESSIONE INSTABILE Â· DATI IN CACHE" : " ONLINE Â· ARCHIVIO SINCRONIZZATO")}{lastSyncAt && <span className="offline-last-sync"> Â· Ultimo sync: {new Date(lastSyncAt).toLocaleString("it-IT",{dateStyle:"short",timeStyle:"short"})}</span>} <button className="avatar avatar-small" onClick={signOut} title="Esci">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</button></div></header>
       <section className="page-wrap">
         {isTrades ? <TradeCenter user={session.user} myItems={collectionItems} onRefresh={loadData}/> : isFriends ? <FriendsCenter user={session.user} myItems={collectionItems} onRefresh={loadData}/> : <>
         <div className="welcome-row"><div><span className="eyebrow">{isCollection?'IL TUO TESORO PERSONALE':'ESPLORA, CERCA, RICORDA'}</span><h1>{isCollection?'La tua collezione':'Il catalogo dei vinili'}<span className="title-period">.</span></h1><p className="page-subtitle">{isCollection?'Ogni copia racconta qualcosa. Qui c’è la tua storia musicale.':'Un archivio condiviso per scoprire album e custodire le tue copie.'}</p></div><div className="welcome-actions"><button className="secondary-btn import-launch-btn" onClick={()=>setShowImport(true)}><Upload size={17}/> Importa catalogo</button><button className="primary-btn add-btn" onClick={()=>setShowAdd(true)}><Plus size={18}/> Aggiungi vinile</button></div></div>
@@ -1411,3 +1450,4 @@ function AlbumDetails({album,user,onClose,onChanged}) {
 }
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);
+
