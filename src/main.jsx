@@ -1,7 +1,7 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Disc3, Search, Plus, SlidersHorizontal, LogOut, Library, DiscAlbum,
+  Disc3, Search, Plus, SlidersHorizontal, LogOut, Library, DiscAlbum, Camera, ScanSearch,
   Music2, Users, Wallet, X, Check, LoaderCircle, Upload, Trash2,
   ArrowUpRight, Sparkles, CircleUserRound, Mail, LockKeyhole, ChevronDown,
   AlertCircle, RefreshCw, ImagePlus, Globe, Pencil, ArrowLeftRight, Send, Eye, EyeOff, MessageCircle, CheckCircle2, Clock3, Youtube
@@ -118,11 +118,13 @@ function AddAlbumModal({ user, onClose, onSaved }) {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupMessage, setLookupMessage] = useState('');
   const [selectedCover, setSelectedCover] = useState('');
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrMessage, setOcrMessage] = useState('');
   const update = (key, val) => setForm(prev => ({...prev, [key]:val}));
 
-  async function searchMusicBrainz(e) {
+  async function searchMusicBrainz(e, queryOverride) {
     e?.preventDefault?.();
-    const query = lookupText.trim();
+    const query = (queryOverride || lookupText).trim();
     if (!query) { setLookupMessage('Scrivi il titolo o il nome dell’artista.'); return; }
     setLookupLoading(true); setLookupMessage('Ricerca in corso…'); setLookupResults([]);
     try {
@@ -141,6 +143,32 @@ function AddAlbumModal({ user, onClose, onSaved }) {
     } catch (err) {
       setLookupMessage('Ricerca non riuscita. Controlla la connessione e riprova; puoi comunque inserire i dati manualmente.');
     } finally { setLookupLoading(false); }
+  }
+
+  async function recognizeCover() {
+    if (!imageFile) { setOcrMessage('Prima scatta o seleziona la foto della copertina.'); return; }
+    setOcrLoading(true); setOcrMessage('Sto leggendo la copertina…');
+    try {
+      if (!window.Tesseract) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+          script.onload = resolve; script.onerror = () => reject(new Error('Libreria OCR non disponibile'));
+          document.head.appendChild(script);
+        });
+      }
+      const result = await window.Tesseract.recognize(imageFile, 'eng', {
+        logger: info => { if (info.status === 'recognizing text') setOcrMessage(`Lettura copertina… ${Math.round((info.progress || 0) * 100)}%`); }
+      });
+      const text = (result.data?.text || '').replace(/[^\p{L}\p{N} &'’-]+/gu, ' ').replace(/\s+/g, ' ').trim();
+      if (!text) throw new Error('Non riesco a leggere il testo della copertina. Prova con una foto più nitida.');
+      const query = text.split(' ').filter(Boolean).slice(0, 12).join(' ');
+      setLookupText(query);
+      setOcrMessage(`Testo riconosciuto: “${query}”. Cerco il disco nell’archivio…`);
+      await searchMusicBrainz(null, query);
+    } catch (err) {
+      setOcrMessage(err.message || 'Riconoscimento non riuscito. Puoi cercare il disco manualmente.');
+    } finally { setOcrLoading(false); }
   }
 
   function chooseMusicBrainz(r) {
@@ -197,7 +225,17 @@ function AddAlbumModal({ user, onClose, onSaved }) {
         <input style={{flex:'1 1 220px',minWidth:0}} value={lookupText} onChange={e=>setLookupText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();searchMusicBrainz();}}} placeholder="Scrivi artista e titolo (es. Pink Floyd Dark Side)" aria-label="Cerca disco"/>
         <button type="button" className="secondary-btn" onClick={searchMusicBrainz} disabled={lookupLoading}>{lookupLoading?<LoaderCircle className="spin" size={16}/>:<Search size={16}/>} Cerca</button>
       </div>
-      <p className="muted" style={{fontSize:12,margin:'6px 0 10px'}}>Ricerca gratuita online. Scegli la stampa corretta: i dati verranno copiati nel modulo e potrai modificarli.</p>
+      <p className="muted" style={{fontSize:12,margin:'6px 0 10px'}}>Puoi cercare scrivendo artista e titolo oppure fotografare la copertina: l’app proverà a leggerne le scritte e a trovare il disco online.</p>
+      <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:8}}>
+        <label className="secondary-btn" style={{display:'inline-flex',alignItems:'center',gap:7,cursor:'pointer'}}>
+          <Camera size={16}/> {imageFile ? 'Foto selezionata' : 'Scatta / scegli copertina'}
+          <input type="file" accept="image/*" capture="environment" onChange={e=>{setImageFile(e.target.files?.[0]||null);setOcrMessage('');}} style={{display:'none'}}/>
+        </label>
+        <button type="button" className="primary-btn" onClick={recognizeCover} disabled={!imageFile || ocrLoading || lookupLoading}>
+          {ocrLoading ? <LoaderCircle className="spin" size={16}/> : <ScanSearch size={16}/>} Riconosci dalla foto
+        </button>
+      </div>
+      {ocrMessage && <div className="muted" style={{fontSize:13,marginBottom:8}}>{ocrMessage}</div>}
       {lookupMessage && <div className="muted" style={{fontSize:13,marginBottom:8}}>{lookupMessage}</div>}
       {lookupResults.length>0 && <div style={{display:'grid',gap:7,marginBottom:14}}>
         {lookupResults.map(r=><button key={r.id} type="button" className="secondary-btn" onClick={()=>chooseMusicBrainz(r)} style={{display:'flex',alignItems:'center',gap:10,textAlign:'left',justifyContent:'flex-start',padding:9}}>
@@ -210,7 +248,7 @@ function AddAlbumModal({ user, onClose, onSaved }) {
         <label>Artista principale *<input value={form.artist} onChange={e=>update('artist',e.target.value)} required maxLength={140} placeholder="Es. Pink Floyd"/></label>
         <label>Anno album<input type="number" min="1800" max="2100" value={form.year} onChange={e=>update('year',e.target.value)} placeholder="1973"/></label>
         <label>Genere<input value={form.genre} onChange={e=>update('genre',e.target.value)} placeholder="Rock, Jazz, Soul…"/></label>
-        <label className="span-2">Copertina (facoltativa)<div className="upload-box"><Upload size={18}/><span>{imageFile ? imageFile.name : 'Scatta una foto o scegli un’immagine dal telefono'}</span><input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={e=>setImageFile(e.target.files?.[0]||null)}/></div>{selectedCover && !imageFile && <span className="muted" style={{fontSize:12}}>È disponibile una copertina online per questo disco. Per salvarla nella tua scheda, scegli anche una foto dal telefono.</span>}</label>
+        {imageFile && <div className="span-2 muted" style={{fontSize:12}}>Foto pronta per essere salvata come copertina: {imageFile.name}</div>}
       </div>
       <div className="form-section-label">EDIZIONE / STAMPA</div><div className="form-grid">
         <label>Formato<select value={form.format} onChange={e=>update('format',e.target.value)}>{FORMATS.map(f=><option key={f}>{f}</option>)}</select></label>
