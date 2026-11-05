@@ -85,13 +85,13 @@ function AuthScreen() {
 
   return <main className="auth-layout">
     <section className="auth-art">
-      <div className="brand-lockup"><div className="brand-mark"><img src="./vinili-logo.png" alt=""/></div><span>VINILI<span className="brand-dot">.</span></span></div>
+      <div className="brand-lockup"><div className="brand-mark"><Disc3 size={27}/></div><span>VINILI<span className="brand-dot">.</span></span></div>
       <div className="hero-copy"><span className="eyebrow"><Sparkles size={14}/> IL TUO ARCHIVIO MUSICALE</span><h1>Ogni disco.<br/><em>Una storia.</em></h1><p>Catalogare, ricordare e condividere la passione per il vinile. Un disco alla volta.</p></div>
       <div className="hero-vinyl"><div className="hero-orbit orbit-a"/><div className="hero-orbit orbit-b"/><VinylDisc size="large"/><div className="hero-shine"/></div>
       <div className="auth-footnote"><span>UNA PASSIONE DA COLLEZIONARE</span><span>EST. 2026</span></div>
     </section>
     <section className="auth-panel">
-      <div className="mobile-brand brand-lockup"><div className="brand-mark"><img src="./vinili-logo.png" alt=""/></div><span>VINILI<span className="brand-dot">.</span></span></div>
+      <div className="mobile-brand brand-lockup"><div className="brand-mark"><Disc3 size={24}/></div><span>VINILI<span className="brand-dot">.</span></span></div>
       <div className="auth-form-wrap"><span className="eyebrow">BENVENUTO NELL’ARCHIVIO</span><h2>{mode === 'login' ? 'Rientra nella tua collezione' : 'Crea il tuo spazio musicale'}</h2><p className="muted">{mode === 'login' ? 'Accedi per vedere i tuoi dischi e scoprire il catalogo.' : 'Registrati e inizia a catalogare i tuoi vinili.'}</p>
         <form className="auth-form" onSubmit={submit}>
           {mode === 'signup' && <label>Come ti chiami?<div className="input-shell"><CircleUserRound size={18}/><input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Nome visualizzato" autoComplete="name"/></div></label>}
@@ -1227,6 +1227,7 @@ function App() {
   const [showFilters, setShowFilters] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
@@ -1351,7 +1352,7 @@ function App() {
   }) : shownAlbums;
 
   return <div className={`app-shell app-shell-${activeTab}`} data-active-tab={activeTab}>
-    <aside className="sidebar"><a className="brand-lockup" href="#catalog" onClick={e=>{e.preventDefault();setActiveTab('catalog')}}><div className="brand-mark"><img src="./vinili-logo.png" alt=""/></div><span>VINILI<span className="brand-dot">.</span></span></a>
+    <aside className="sidebar"><a className="brand-lockup" href="#catalog" onClick={e=>{e.preventDefault();setActiveTab('catalog')}}><div className="brand-mark"><Disc3 size={25}/></div><span>VINILI<span className="brand-dot">.</span></span></a>
       <div className="side-label">IL TUO SPAZIO</div><nav className="side-nav">
         <button className={activeTab==='catalog'?'active':''} onClick={()=>setActiveTab('catalog')}><Library size={19}/><span>Catalogo</span><span className="nav-count">{albums.length}</span></button>
         <button className={activeTab==='collection'?'active':''} onClick={()=>setActiveTab('collection')}><DiscAlbum size={19}/><span>La mia collezione</span><span className="nav-count">{myItems.length}</span></button>
@@ -1363,7 +1364,7 @@ function App() {
       <div className="app-version">VINILI v1.4.0 · 21/10/2026</div>
     </aside>
 
-    <main className="main-content"><header className="topbar"><div className="crumb"><img className="crumb-logo" src="./vinili-logo.png" alt="VINILI" /><span className="crumb-slash">/</span><b>{isCollection?'LA MIA COLLEZIONE':isTrades?'SCAMBI E CONFRONTI':isFriends?'AMICI E CHAT':'CATALOGO MUSICALE'}</b></div><div className="top-actions"><span className={`online-dot ${isOnline ? "" : "offline-dot"}`}/>{!isOnline ? " OFFLINE Â· SOLA LETTURA" : (offlineData ? " CONNESSIONE INSTABILE Â· DATI IN CACHE" : " ONLINE Â· ARCHIVIO SINCRONIZZATO")}{lastSyncAt && <span className="offline-last-sync"> Â· Ultimo sync: {new Date(lastSyncAt).toLocaleString("it-IT",{dateStyle:"short",timeStyle:"short"})}</span>} <button className="avatar avatar-small" onClick={signOut} title="Esci">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</button></div></header>
+    <main className="main-content"><header className="topbar"><div className="crumb"><img className="crumb-logo" src="./vinili-logo.png" alt="VINILI" /><span className="crumb-slash">/</span><b>{isCollection?'LA MIA COLLEZIONE':isTrades?'SCAMBI E CONFRONTI':isFriends?'AMICI E CHAT':'CATALOGO MUSICALE'}</b></div><div className="top-actions"><span className={`online-dot ${isOnline ? "" : "offline-dot"}`}/>{!isOnline ? " OFFLINE Â· SOLA LETTURA" : (offlineData ? " CONNESSIONE INSTABILE Â· DATI IN CACHE" : " ONLINE Â· ARCHIVIO SINCRONIZZATO")}{lastSyncAt && <span className="offline-last-sync"> Â· Ultimo sync: {new Date(lastSyncAt).toLocaleString("it-IT",{dateStyle:"short",timeStyle:"short"})}</span>} <button className="avatar avatar-small" onClick={()=>setShowLogoutConfirm(true)} title="Esci">{(session.user.user_metadata?.display_name||session.user.email||'V').slice(0,1).toUpperCase()}</button></div></header>
       <section className="page-wrap">
         {isTrades ? <TradeCenter user={session.user} myItems={collectionItems} onRefresh={loadData}/> : isFriends ? <FriendsCenter user={session.user} myItems={collectionItems} onRefresh={loadData}/> : <>
         <div className="welcome-row"><div><span className="eyebrow">{isCollection?'IL TUO TESORO PERSONALE':'ESPLORA, CERCA, RICORDA'}</span><h1>{isCollection?'La tua collezione':'Il catalogo dei vinili'}<span className="title-period">.</span></h1><p className="page-subtitle">{isCollection?'Ogni copia racconta qualcosa. Qui c’è la tua storia musicale.':'Un archivio condiviso per scoprire album e custodire le tue copie.'}</p></div><div className="welcome-actions"><button className="secondary-btn import-launch-btn" onClick={()=>setShowImport(true)}><Upload size={17}/> Importa catalogo</button><button className="primary-btn add-btn" onClick={()=>setShowAdd(true)}><Plus size={18}/> Aggiungi vinile</button></div></div>
@@ -1382,6 +1383,7 @@ function App() {
     {editingItem&&<CollectionItemEditModal item={editingItem} user={session.user} onClose={()=>setEditingItem(null)} onSaved={()=>{setEditingItem(null);setSuccessMessage('Dati personali della copia aggiornati.');loadData();}}/>}
     {showAdd&&<AddAlbumModal user={session.user} onClose={()=>setShowAdd(false)} onSaved={()=>{setSuccessMessage('Vinile aggiunto correttamente.');loadData();}}/>}
     {selectedAlbum&&<AlbumDetails album={selectedAlbum} user={session.user} onClose={()=>setSelectedAlbum(null)} onChanged={()=>{setSelectedAlbum(null);loadData();}}/>}
+    {showLogoutConfirm&&<div className="modal-backdrop" style={{zIndex:100,background:'rgba(5,7,14,.78)',backdropFilter:'blur(8px)'}} onMouseDown={event=>{if(event.target===event.currentTarget)setShowLogoutConfirm(false);}}><section role="dialog" aria-modal="true" aria-labelledby="logout-confirm-title" className="modal-card" style={{width:'min(420px,100%)',padding:0,borderRadius:18,background:'var(--panel,#191a25)',border:'1px solid rgba(225,194,139,.35)',boxShadow:'0 24px 80px rgba(0,0,0,.5)'}}><div style={{padding:'25px 25px 18px'}}><div style={{width:46,height:46,borderRadius:14,display:'grid',placeItems:'center',background:'rgba(225,194,139,.13)',color:'var(--gold,#e1c28b)',marginBottom:16}}><LogOut size={22}/></div><span className="eyebrow">VINILI · ACCOUNT</span><h2 id="logout-confirm-title" style={{fontFamily:'Playfair Display,serif',fontSize:27,fontWeight:500,margin:'8px 0'}}>Vuoi uscire?</h2><p className="muted" style={{fontSize:13,lineHeight:1.6,margin:0}}>Stai per terminare la sessione. Dovrai accedere nuovamente per entrare nella tua collezione.</p></div><footer style={{display:'flex',justifyContent:'flex-end',gap:10,padding:'15px 20px 20px',borderTop:'1px solid rgba(150,150,160,.18)'}}><button type="button" className="secondary-btn" onClick={()=>setShowLogoutConfirm(false)}>Annulla</button><button type="button" className="primary-btn" onClick={signOut}><LogOut size={15}/> Sì, esci</button></footer></section></div>}
   </div>;
 }
 
