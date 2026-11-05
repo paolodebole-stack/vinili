@@ -207,71 +207,6 @@ if (supabase && typeof document !== 'undefined') {
     });
   }
 
-  async function openCollectionOrganizer() {
-    if (!currentSession?.user) return;
-    let rows = [];
-    try {
-      const { data, error } = await supabase.from('collection_items')
-        .select('id,release_id,releases(id,format,albums(title,album_artists(artists(name))))')
-        .eq('owner_id', currentSession.user.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      rows = data || [];
-    } catch (error) { showToast(error?.message || 'Impossibile caricare la collezione.'); return; }
-
-    document.getElementById('vinili-collection-organizer')?.remove();
-    const overlay = document.createElement('div');
-    overlay.id = 'vinili-collection-organizer';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(12,18,30,.72);display:flex;align-items:center;justify-content:center;padding:18px;';
-    const panel = document.createElement('section');
-    panel.style.cssText = 'background:#fff;color:#172033;width:min(680px,100%);max-height:85vh;overflow:auto;border-radius:18px;padding:24px;box-shadow:0 20px 70px rgba(0,0,0,.3);';
-    const title = document.createElement('h2'); title.textContent = 'Riordina la mia collezione'; title.style.cssText = 'margin:0 0 8px;font-size:22px;';
-    const intro = document.createElement('p');
-    intro.textContent = 'Lascia selezionati i dischi che possiedi. Togli la spunta a quelli che ti mancano: verranno rimossi solo dalla tua collezione personale e resteranno nel catalogo generale.';
-    intro.style.cssText = 'margin:0 0 16px;line-height:1.5;color:#596579;';
-    const counter = document.createElement('p'); counter.style.cssText = 'font-weight:700;margin:0 0 10px;';
-    const list = document.createElement('div'); list.style.cssText = 'display:grid;gap:8px;';
-    const checks = [];
-    rows.forEach((item) => {
-      const release = item.releases || {}; const album = release.albums || {};
-      const artists = (album.album_artists || []).map(x => x.artists?.name).filter(Boolean).join(', ');
-      const label = document.createElement('label'); label.style.cssText = 'display:flex;gap:12px;align-items:center;padding:10px 12px;border:1px solid #e3e8ef;border-radius:10px;cursor:pointer;';
-      const check = document.createElement('input'); check.type = 'checkbox'; check.checked = true; check.style.cssText = 'width:18px;height:18px;flex:0 0 auto;accent-color:#16845b;';
-      const text = document.createElement('span'); text.style.cssText = 'min-width:0;display:block;';
-      const name = document.createElement('strong'); name.textContent = album.title || 'Disco senza titolo'; name.style.cssText = 'display:block;';
-      const detail = document.createElement('small'); detail.textContent = [artists, release.format].filter(Boolean).join(' · '); detail.style.cssText = 'display:block;color:#718096;margin-top:2px;';
-      text.append(name, detail); label.append(check, text); list.append(label); checks.push({ id: item.id, check });
-      check.addEventListener('change', updateCounter);
-    });
-    function updateCounter() { const kept = checks.filter(x => x.check.checked).length; counter.textContent = kept + ' da conservare · ' + (checks.length-kept) + ' da rimuovere'; }
-    updateCounter();
-    const actions = document.createElement('div'); actions.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px;';
-    const cancel = document.createElement('button'); cancel.textContent = 'Annulla'; cancel.style.cssText = 'padding:11px 16px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;cursor:pointer;'; cancel.onclick = () => overlay.remove();
-    const save = document.createElement('button'); save.textContent = 'Conferma riordino'; save.style.cssText = 'padding:11px 16px;border:0;border-radius:10px;background:#176b4b;color:#fff;font-weight:700;cursor:pointer;';
-    save.onclick = async () => {
-      const remove = checks.filter(x => !x.check.checked).map(x => x.id);
-      if (!remove.length) { overlay.remove(); showToast('La collezione è già aggiornata: nessun disco da rimuovere.'); return; }
-      if (!window.confirm('Confermi la rimozione di ' + remove.length + ' dischi dalla tua collezione? I dischi resteranno nel catalogo generale.')) return;
-      save.disabled = true; save.textContent = 'Aggiornamento…';
-      try {
-        const { error } = await supabase.from('collection_items').delete().eq('owner_id', currentSession.user.id).in('id', remove);
-        if (error) throw error;
-        overlay.remove(); showToast(remove.length + ' dischi rimossi dalla collezione. Il catalogo generale non è stato modificato.'); window.location.reload();
-      } catch (error) { save.disabled = false; save.textContent = 'Conferma riordino'; showToast(error?.message || 'Non è stato possibile completare il riordino.'); }
-    };
-    actions.append(cancel, save); panel.append(title, intro, counter, list, actions); overlay.append(panel);
-    overlay.addEventListener('click', event => { if (event.target === overlay) overlay.remove(); }); document.body.append(overlay);
-  }
-
-  function ensureCollectionOrganizer() {
-    const heading = document.querySelector('.topbar .crumb b')?.textContent || '';
-    const target = document.querySelector('.catalog-head');
-    if (!/LA MIA COLLEZIONE/i.test(heading) || !target || target.querySelector('.vinili-organize-collection')) return;
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'secondary-btn vinili-organize-collection';
-    button.textContent = '⇅ Riordina la mia collezione'; button.style.cssText = 'margin-left:10px;white-space:nowrap;';
-    button.addEventListener('click', openCollectionOrganizer); target.querySelector('.catalog-tools')?.append(button);
-  }
-
   function ensurePreferencesTrigger() {
     const area = document.querySelector('.topbar .top-actions');
     if (!area || area.querySelector('.vinili-preferences-trigger')) return;
@@ -449,7 +384,6 @@ if (supabase && typeof document !== 'undefined') {
       ensurePasskeyLoginButton();
       if (!currentSession?.user) return;
       ensurePreferencesTrigger();
-      ensureCollectionOrganizer();
       await enhanceOwnershipControls();
     }, 120);
   }
