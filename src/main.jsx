@@ -85,13 +85,13 @@ function AuthScreen() {
 
   return <main className="auth-layout">
     <section className="auth-art">
-      <div className="brand-lockup"><div className="brand-mark"><Disc3 size={27}/></div><span>VINILI<span className="brand-dot">.</span></span></div>
+      <div className="brand-lockup"><div className="brand-mark"><img src="./vinili-logo.png" alt=""/></div><span>VINILI<span className="brand-dot">.</span></span></div>
       <div className="hero-copy"><span className="eyebrow"><Sparkles size={14}/> IL TUO ARCHIVIO MUSICALE</span><h1>Ogni disco.<br/><em>Una storia.</em></h1><p>Catalogare, ricordare e condividere la passione per il vinile. Un disco alla volta.</p></div>
       <div className="hero-vinyl"><div className="hero-orbit orbit-a"/><div className="hero-orbit orbit-b"/><VinylDisc size="large"/><div className="hero-shine"/></div>
       <div className="auth-footnote"><span>UNA PASSIONE DA COLLEZIONARE</span><span>EST. 2026</span></div>
     </section>
     <section className="auth-panel">
-      <div className="mobile-brand brand-lockup"><div className="brand-mark"><Disc3 size={24}/></div><span>VINILI<span className="brand-dot">.</span></span></div>
+      <div className="mobile-brand brand-lockup"><div className="brand-mark"><img src="./vinili-logo.png" alt=""/></div><span>VINILI<span className="brand-dot">.</span></span></div>
       <div className="auth-form-wrap"><span className="eyebrow">BENVENUTO NELL’ARCHIVIO</span><h2>{mode === 'login' ? 'Rientra nella tua collezione' : 'Crea il tuo spazio musicale'}</h2><p className="muted">{mode === 'login' ? 'Accedi per vedere i tuoi dischi e scoprire il catalogo.' : 'Registrati e inizia a catalogare i tuoi vinili.'}</p>
         <form className="auth-form" onSubmit={submit}>
           {mode === 'signup' && <label>Come ti chiami?<div className="input-shell"><CircleUserRound size={18}/><input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Nome visualizzato" autoComplete="name"/></div></label>}
@@ -1351,7 +1351,7 @@ function App() {
   }) : shownAlbums;
 
   return <div className={`app-shell app-shell-${activeTab}`} data-active-tab={activeTab}>
-    <aside className="sidebar"><a className="brand-lockup" href="#catalog" onClick={e=>{e.preventDefault();setActiveTab('catalog')}}><div className="brand-mark"><Disc3 size={25}/></div><span>VINILI<span className="brand-dot">.</span></span></a>
+    <aside className="sidebar"><a className="brand-lockup" href="#catalog" onClick={e=>{e.preventDefault();setActiveTab('catalog')}}><div className="brand-mark"><img src="./vinili-logo.png" alt=""/></div><span>VINILI<span className="brand-dot">.</span></span></a>
       <div className="side-label">IL TUO SPAZIO</div><nav className="side-nav">
         <button className={activeTab==='catalog'?'active':''} onClick={()=>setActiveTab('catalog')}><Library size={19}/><span>Catalogo</span><span className="nav-count">{albums.length}</span></button>
         <button className={activeTab==='collection'?'active':''} onClick={()=>setActiveTab('collection')}><DiscAlbum size={19}/><span>La mia collezione</span><span className="nav-count">{myItems.length}</span></button>
