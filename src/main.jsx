@@ -113,7 +113,47 @@ function AddAlbumModal({ user, onClose, onSaved }) {
   const [imageFile, setImageFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [lookupText, setLookupText] = useState('');
+  const [lookupResults, setLookupResults] = useState([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState('');
+  const [selectedCover, setSelectedCover] = useState('');
   const update = (key, val) => setForm(prev => ({...prev, [key]:val}));
+
+  async function searchMusicBrainz(e) {
+    e?.preventDefault?.();
+    const query = lookupText.trim();
+    if (!query) { setLookupMessage('Scrivi il titolo o il nome dell’artista.'); return; }
+    setLookupLoading(true); setLookupMessage('Ricerca in corso…'); setLookupResults([]);
+    try {
+      const url = `https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(query)}&fmt=json&limit=8`;
+      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`Servizio non disponibile (${response.status})`);
+      const data = await response.json();
+      const results = (data.releases || []).map(r => {
+        const artist = (r['artist-credit'] || []).map(a => typeof a === 'string' ? a : (a.name || a.artist?.name || '')).join('').trim();
+        const info = (r['label-info'] || [])[0] || {};
+        const medium = (r.media || [])[0] || {};
+        return { id:r.id, title:r.title || '', artist, date:r.date || '', year:(r.date || '').slice(0,4), country:r.country || '', format:medium.format || '', label:info.label?.name || '', catalog_number:info['catalog-number'] || '', cover:`https://coverartarchive.org/release/${r.id}/front-250` };
+      }).filter(r => r.title && r.artist);
+      setLookupResults(results);
+      setLookupMessage(results.length ? `Trovati ${results.length} risultati. Seleziona la stampa corretta.` : 'Nessun risultato. Prova con artista e titolo.');
+    } catch (err) {
+      setLookupMessage('Ricerca non riuscita. Controlla la connessione e riprova; puoi comunque inserire i dati manualmente.');
+    } finally { setLookupLoading(false); }
+  }
+
+  function chooseMusicBrainz(r) {
+    update('title', r.title); update('artist', r.artist);
+    if (r.year) { update('year', r.year); update('release_year', r.year); }
+    if (r.country) update('country', r.country);
+    if (r.format) update('format', /vinyl/i.test(r.format) ? 'Vinile' : r.format);
+    if (r.label) update('label', r.label);
+    if (r.catalog_number) update('catalog_number', r.catalog_number);
+    setSelectedCover(r.cover);
+    setLookupMessage('Dati inseriti. Controllali e completa le informazioni della tua copia.');
+    setLookupResults([]);
+  }
 
   async function save(e) {
     e.preventDefault(); setSaving(true); setError('');
@@ -152,12 +192,25 @@ function AddAlbumModal({ user, onClose, onSaved }) {
   }
   return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="modal-card"><header className="modal-head"><div><span className="eyebrow">NUOVO INSERIMENTO</span><h2>Aggiungi un vinile</h2><p className="muted">Il disco entrerà nel catalogo e nella tua collezione personale.</p></div><button className="icon-btn" onClick={onClose} aria-label="Chiudi"><X size={20}/></button></header>
     <form onSubmit={save} className="album-form">
+      <div className="form-section-label">TROVA IL DISCO AUTOMATICAMENTE</div>
+      <div style={{display:'flex',gap:8,alignItems:'stretch',flexWrap:'wrap'}}>
+        <input style={{flex:'1 1 220px',minWidth:0}} value={lookupText} onChange={e=>setLookupText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();searchMusicBrainz();}}} placeholder="Scrivi artista e titolo (es. Pink Floyd Dark Side)" aria-label="Cerca disco"/>
+        <button type="button" className="secondary-btn" onClick={searchMusicBrainz} disabled={lookupLoading}>{lookupLoading?<LoaderCircle className="spin" size={16}/>:<Search size={16}/>} Cerca</button>
+      </div>
+      <p className="muted" style={{fontSize:12,margin:'6px 0 10px'}}>Ricerca gratuita online. Scegli la stampa corretta: i dati verranno copiati nel modulo e potrai modificarli.</p>
+      {lookupMessage && <div className="muted" style={{fontSize:13,marginBottom:8}}>{lookupMessage}</div>}
+      {lookupResults.length>0 && <div style={{display:'grid',gap:7,marginBottom:14}}>
+        {lookupResults.map(r=><button key={r.id} type="button" className="secondary-btn" onClick={()=>chooseMusicBrainz(r)} style={{display:'flex',alignItems:'center',gap:10,textAlign:'left',justifyContent:'flex-start',padding:9}}>
+          <img src={r.cover} alt="" onError={e=>{e.currentTarget.style.display='none';}} style={{width:48,height:48,objectFit:'cover',borderRadius:5,background:'var(--surface-2,#eee)',flexShrink:0}}/>
+          <span style={{display:'grid',gap:2,minWidth:0}}><strong>{r.title}</strong><span style={{fontSize:12,opacity:.8}}>{r.artist} {r.year?`· ${r.year}`:''} {r.country?`· ${r.country}`:''}</span><span style={{fontSize:11,opacity:.7}}>{[r.format,r.label,r.catalog_number].filter(Boolean).join(' · ')}</span></span>
+        </button>)}
+      </div>}
       <div className="form-section-label">IL DISCO</div><div className="form-grid">
         <label className="span-2">Titolo dell’album *<input value={form.title} onChange={e=>update('title',e.target.value)} required maxLength={160} placeholder="Es. The Dark Side of the Moon"/></label>
         <label>Artista principale *<input value={form.artist} onChange={e=>update('artist',e.target.value)} required maxLength={140} placeholder="Es. Pink Floyd"/></label>
         <label>Anno album<input type="number" min="1800" max="2100" value={form.year} onChange={e=>update('year',e.target.value)} placeholder="1973"/></label>
         <label>Genere<input value={form.genre} onChange={e=>update('genre',e.target.value)} placeholder="Rock, Jazz, Soul…"/></label>
-        <label className="span-2">Copertina (facoltativa)<div className="upload-box"><Upload size={18}/><span>{imageFile ? imageFile.name : 'Scegli un’immagine JPG, PNG o WEBP'}</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setImageFile(e.target.files?.[0]||null)}/></div></label>
+        <label className="span-2">Copertina (facoltativa)<div className="upload-box"><Upload size={18}/><span>{imageFile ? imageFile.name : 'Scatta una foto o scegli un’immagine dal telefono'}</span><input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={e=>setImageFile(e.target.files?.[0]||null)}/></div>{selectedCover && !imageFile && <span className="muted" style={{fontSize:12}}>È disponibile una copertina online per questo disco. Per salvarla nella tua scheda, scegli anche una foto dal telefono.</span>}</label>
       </div>
       <div className="form-section-label">EDIZIONE / STAMPA</div><div className="form-grid">
         <label>Formato<select value={form.format} onChange={e=>update('format',e.target.value)}>{FORMATS.map(f=><option key={f}>{f}</option>)}</select></label>
