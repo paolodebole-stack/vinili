@@ -1350,7 +1350,7 @@ function App() {
     return !q||search.includes(q);
   }) : shownAlbums;
 
-  return <div className="app-shell">
+  return <div className={`app-shell app-shell-${activeTab}`} data-active-tab={activeTab}>
     <aside className="sidebar"><a className="brand-lockup" href="#catalog" onClick={e=>{e.preventDefault();setActiveTab('catalog')}}><div className="brand-mark"><Disc3 size={25}/></div><span>VINILI<span className="brand-dot">.</span></span></a>
       <div className="side-label">IL TUO SPAZIO</div><nav className="side-nav">
         <button className={activeTab==='catalog'?'active':''} onClick={()=>setActiveTab('catalog')}><Library size={19}/><span>Catalogo</span><span className="nav-count">{albums.length}</span></button>

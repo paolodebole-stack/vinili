@@ -367,53 +367,154 @@
 @media(max-width:650px){.side-nav button span:not(.nav-count){font-size:0;white-space:nowrap}.side-nav button:nth-child(2) span:not(.nav-count)::after{content:'Collezione';font-size:8px}.side-nav button:nth-child(4) span:not(.nav-count)::after{content:'Amici';font-size:8px}.side-nav button:nth-child(1) span:not(.nav-count)::after{content:'Catalogo';font-size:8px}.side-nav button:nth-child(3) span:not(.nav-count)::after{content:'Scambi';font-size:8px}}
 
 
-/* VINILI RESTYLING 2.0 — rifinitura mobile e desktop */
-.crumb{display:flex;align-items:center;gap:12px}
-.crumb-logo{display:block;width:92px;height:34px;object-fit:contain;object-position:left center}
-.crumb-slash{opacity:.45}
-.topbar{min-height:76px}
-@media(max-width:760px){
-  .topbar{min-height:68px;padding:10px 16px}
-  .crumb{gap:9px;font-size:11px;letter-spacing:.13em}
-  .crumb-logo{width:76px;height:30px}
-  .top-actions{gap:6px}
-  .page-wrap{padding-top:20px}
-  .welcome-row{display:block;margin-bottom:20px}
-  .welcome-row h1{font-size:clamp(34px,8vw,48px);line-height:1.02;margin:10px 0 12px}
-  .page-subtitle{font-size:14px;line-height:1.5;max-width:36em}
-  .welcome-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
-  .welcome-actions button{min-width:0;justify-content:center;padding:13px 9px;font-size:12px}
-  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:20px 0}
-  .stat-card{min-height:126px;padding:14px;border-radius:18px}
-  .stat-top{font-size:9px;letter-spacing:.09em}
-  .stat-value{font-size:34px;margin-top:18px}
-  .stat-foot{font-size:11px;line-height:1.35}
-  .catalog-meaning-note{display:none}
-  .catalog-section{margin-top:22px;border-radius:22px;overflow:hidden}
-  .catalog-head{padding:18px 15px;gap:12px}
-  .catalog-head h2{font-size:26px}
-  .catalog-head p{font-size:12px}
-  .catalog-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;width:100%}
-  .catalog-tools .search-box{grid-column:1/-1;width:100%;min-width:0}
-  .catalog-tools .filter-btn{min-width:0;padding:10px 12px}
-  .album-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:12px}
-  .album-card,.collection-album-card{min-width:0;border-radius:18px;overflow:hidden}
-  .cover-wrap{aspect-ratio:1/1}
-  .album-card-info{padding:10px 11px 12px}
-  .album-card-info h3{font-size:16px;line-height:1.15}
-  .album-card-info .artist-name{font-size:12px}
-  .collection-album-card .album-card-info{padding-bottom:12px}
-  .collection-card-actions{gap:7px}
+/* ==========================================================
+   VINILI — RESTYLING REALE 3.0
+   Nuova gerarchia visiva: navy, champagne, schede editoriali.
+   Le regole sono volutamente in coda per prevalere sugli stili
+   precedenti senza modificare le funzioni dell'app.
+   ========================================================== */
+:root{
+  --bg:#10111b;
+  --panel:#171925;
+  --panel-soft:#202231;
+  --line:#343646;
+  --muted:#9293a0;
+  --text:#f3efe7;
+  --gold:#e3c38d;
+  --gold-light:#f1d9aa;
+  --green:#b9c99f;
 }
-@media(min-width:761px){
-  .crumb-logo{width:105px;height:38px}
-  .catalog-meaning-note{max-width:100%;gap:12px}
+html,body{background:#10111b;color:var(--text)}
+.app-shell{background:#10111b;min-height:100vh}
+.sidebar{background:#141521;border-color:#292b3a}
+.topbar{background:rgba(16,17,27,.96);border-color:#2b2d3b;backdrop-filter:blur(16px)}
+.brand-mark{background:#202130;border-color:#6c5a3b;color:var(--gold)}
+.brand-lockup{letter-spacing:.22em}
+.main-content{background:#10111b}
+.page-wrap{max-width:1600px;padding-top:30px}
+.welcome-row{align-items:center;margin-bottom:24px}
+.welcome-row h1{font-size:clamp(34px,3.3vw,48px);letter-spacing:-.055em}
+.eyebrow{color:var(--gold);letter-spacing:.2em}
+.page-subtitle{font-size:13px;color:#a1a2ad;line-height:1.65}
+.stats-grid{gap:12px;margin:22px 0 25px}
+.stat-card{background:linear-gradient(145deg,#1c1e2b,#171925);border-color:#343647;border-radius:17px;min-height:122px;padding:17px}
+.stat-card:after{border-color:#e3c38d12;box-shadow:0 0 0 14px #e3c38d07,0 0 0 28px #e3c38d04}
+.stat-value{color:#f1eadc}
+.stat-highlight{background:linear-gradient(145deg,#292538,#1b1c29);border-color:#66583e}
+.catalog-meaning-note{gap:12px;margin-bottom:22px}
+.catalog-meaning-note>div{background:#191b28;border:1px solid #303344;border-radius:13px;padding:15px 17px}
+.catalog-meaning-note b{color:var(--gold)}
+.catalog-meaning-note span{color:#a0a1ad;line-height:1.65}
+.catalog-section{background:#141622;border:1px solid #343647;border-radius:20px;overflow:hidden;box-shadow:0 16px 45px #0002}
+.catalog-head{padding:22px 23px 19px;border-color:#303242}
+.catalog-head h2{font-size:27px;letter-spacing:-.035em}
+.catalog-head p{font-size:12px;color:#9698a5}
+.search-box{height:46px;width:min(390px,32vw);background:#202231;border:1px solid #3a3c4d;border-radius:11px;padding:0 13px}
+.search-box input{font-size:13px}
+.search-box kbd{display:none}
+.filter-btn,.view-switch button{background:#202231;border:1px solid #3a3c4d;border-radius:10px;color:#d5d3ce;padding:11px 14px}
+.view-switch{padding:3px;background:#191b28;border:1px solid #343647;border-radius:11px}
+.view-switch button{border:0;background:transparent}
+.view-switch button.selected{background:#e3c38d;color:#201b14}
+.album-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:17px;padding:18px}
+.album-card{background:#191b27;border:1px solid #343647;border-radius:17px;overflow:hidden;box-shadow:0 8px 22px #0002}
+.album-card:hover{border-color:#8c744c;transform:translateY(-3px);box-shadow:0 15px 30px #0004}
+.cover-wrap{aspect-ratio:1/1;background:#222433}
+.album-card-info{padding:13px 14px 15px}
+.album-genre{display:inline-flex;width:max-content;max-width:100%;align-items:center;border-radius:7px;background:#e3c38d;color:#211c14;padding:6px 9px;font:600 9px 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase}
+.album-card-info h3{font:600 19px/1.15 'Playfair Display',serif;color:#f2eee7;letter-spacing:-.02em}
+.album-card-info p{font-size:12px;color:#a0a1ad}
+.album-card-foot{border-top:1px solid #343647;padding-top:9px;margin-top:10px;color:#9294a0;font:10px 'DM Mono',monospace}
+.format-pill{background:#151722df;border:1px solid #5b5d68;border-radius:7px;font-size:9px}
+.owned-badge{background:#b9c99f;color:#1b2419;border:0;border-radius:7px;font:600 9px 'DM Mono',monospace;padding:7px 9px}
+.collection-album-card .album-card-info{padding-bottom:16px}
+.collection-card-actions{position:static;display:grid;grid-template-columns:1fr 1fr auto;gap:7px;padding:0 13px 13px;background:#191b27}
+.collection-edit-action{min-height:38px;background:#222431;border:1px solid #4a4b58;color:#e5d4b4;border-radius:9px;font-size:10px;padding:8px 10px}
+.collection-card-actions .remove-item{width:38px;height:38px;border-radius:9px;background:#20212a;border:1px solid #41424d;color:#c6c4bc}
+.collection-edit-action:hover,.collection-card-actions .remove-item:hover{border-color:var(--gold);background:#2a2a33}
+.collection-edit-action svg{color:var(--gold)}
+.page-footer{color:#777987}
+.app-version{background:#171925;border-color:#343647}
+/* La collezione diventa subito consultabile: niente blocchi statistici
+   ripetuti prima delle copie personali. */
+.app-shell-collection .stats-grid,.app-shell-collection .catalog-meaning-note{display:none!important}
+.app-shell-collection .welcome-row{margin-bottom:19px;align-items:center}
+.app-shell-collection .welcome-row h1{font-size:clamp(32px,3vw,43px);margin:8px 0 6px}
+.app-shell-collection .welcome-row .eyebrow{font-size:9px}
+.app-shell-collection .welcome-actions{margin:0}
+.app-shell-collection .catalog-section{margin-top:0}
+.app-shell-collection .catalog-head{padding-top:19px}
+@media(max-width:1000px){
+ .album-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .page-wrap{padding-left:24px;padding-right:24px}
 }
-
 @media(max-width:760px){
-  .side-nav button span:not(.nav-count){font-size:9px!important;white-space:nowrap}
-  .side-nav button:nth-child(1) span:not(.nav-count)::after,
-  .side-nav button:nth-child(2) span:not(.nav-count)::after,
-  .side-nav button:nth-child(3) span:not(.nav-count)::after,
-  .side-nav button:nth-child(4) span:not(.nav-count)::after{content:none!important}
+ body{background:#10111b}
+ .main-content{margin-left:0;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+ .topbar{position:sticky;top:0;z-index:20;height:68px;min-height:68px;padding:9px 16px;background:rgba(16,17,27,.97);border-bottom:1px solid #2d2f3e}
+ .crumb{gap:8px;font-size:10px;letter-spacing:.12em;min-width:0}
+ .crumb-logo{width:75px;height:31px;object-fit:contain}
+ .crumb b{font-size:9px;white-space:nowrap}
+ .top-actions{gap:5px;font-size:0}
+ .top-actions .avatar{width:36px;height:36px;font-size:13px}
+ .page-wrap{padding:21px 14px 18px}
+ .welcome-row{display:flex;flex-direction:column;align-items:stretch;gap:14px;margin-bottom:18px}
+ .welcome-row h1{font-size:36px;line-height:1.04;margin:8px 0 7px}
+ .page-subtitle{font-size:12px;line-height:1.5}
+ .welcome-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;width:100%;margin:0}
+ .welcome-actions button{min-width:0;min-height:47px;padding:11px 8px;font-size:11px;border-radius:11px;white-space:nowrap}
+ .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:17px 0 18px}
+ .stat-card{min-height:105px;padding:12px;border-radius:15px}
+ .stat-top{font-size:8px;letter-spacing:.07em}
+ .stat-top svg{width:17px;height:17px}
+ .stat-value{font-size:29px;margin-top:12px}
+ .stat-caption{font-size:10px}
+ .stat-foot{font-size:9px;margin-top:3px}
+ .catalog-meaning-note{display:none!important}
+ .catalog-section{border-radius:17px;margin-top:16px}
+ .catalog-head{display:grid;grid-template-columns:1fr;gap:13px;padding:16px 13px 13px}
+ .catalog-head h2{font-size:24px;margin-bottom:5px}
+ .catalog-head p{font-size:10px}
+ .catalog-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;width:100%}
+ .catalog-tools .search-box{grid-column:1/-1;width:100%;height:44px;min-width:0;border-radius:11px}
+ .catalog-tools .filter-btn{min-height:40px;padding:9px 12px;border-radius:10px}
+ .catalog-tools .view-switch{justify-self:start}
+ .album-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px}
+ .album-card,.collection-album-card{border-radius:14px}
+ .cover-wrap{aspect-ratio:1/1}
+ .album-card-info{padding:9px 9px 11px}
+ .album-genre{font-size:7px;padding:5px 7px;border-radius:6px;letter-spacing:.06em}
+ .album-card-info h3{font-size:15px;line-height:1.13;margin:6px 0}
+ .album-title-line{gap:5px;align-items:flex-start}
+ .album-card-info .artist-name,.album-card-info p{font-size:10px;line-height:1.35}
+ .album-card-foot{font-size:8px;padding-top:7px;margin-top:7px;gap:4px}
+ .format-pill{left:7px;top:7px;font-size:7px;padding:4px 6px}
+ .owned-badge{left:7px;bottom:7px;font-size:7px;padding:5px 7px}
+ .collection-card-actions{grid-template-columns:1fr 1fr;gap:6px;padding:0 8px 9px}
+ .collection-edit-action{min-height:35px;padding:7px 5px;font-size:9px;gap:4px}
+ .collection-card-actions .remove-item{grid-column:1/-1;width:100%;height:33px;min-height:33px}
+ .app-shell-collection .welcome-row{gap:10px;margin-bottom:14px}
+ .app-shell-collection .welcome-row h1{font-size:34px;margin:6px 0 4px}
+ .app-shell-collection .welcome-row .eyebrow{font-size:8px}
+ .app-shell-collection .welcome-row .page-subtitle{font-size:11px}
+ .app-shell-collection .welcome-actions{grid-template-columns:1fr 1fr}
+ .app-shell-collection .catalog-section{margin-top:0}
+ .app-shell-collection .catalog-head{padding-top:14px}
+ .side-nav{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(20,21,33,.97);border-top:1px solid #343647;backdrop-filter:blur(18px)}
+ .side-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:54px;padding:5px 2px;border:1px solid transparent;border-radius:12px;font-size:9px;color:#a4a5b1;text-align:center}
+ .side-nav button svg{width:20px;height:20px;color:#9698a5}
+ .side-nav button span:not(.nav-count){display:block!important;font-size:9px!important;white-space:nowrap;letter-spacing:0}
+ .side-nav button .nav-count{display:none}
+ .side-nav button.active{background:#292a38;border-color:#3a3b4a;color:var(--gold)}
+ .side-nav button.active svg{color:var(--gold)}
+ .sidebar{display:contents}
+ .sidebar>.brand-lockup,.sidebar>.side-label,.sidebar>.sidebar-note,.sidebar>.sidebar-user,.sidebar>.app-version{display:none!important}
+ .page-footer{padding:13px 3px 4px;font-size:7px}
+}
+@media(max-width:380px){
+ .page-wrap{padding-left:10px;padding-right:10px}
+ .welcome-row h1{font-size:32px}
+ .welcome-actions button{font-size:10px}
+ .album-grid{gap:8px;padding:8px}
+ .album-card-info h3{font-size:14px}
 }
