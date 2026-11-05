@@ -367,56 +367,53 @@
 @media(max-width:650px){.side-nav button span:not(.nav-count){font-size:0;white-space:nowrap}.side-nav button:nth-child(2) span:not(.nav-count)::after{content:'Collezione';font-size:8px}.side-nav button:nth-child(4) span:not(.nav-count)::after{content:'Amici';font-size:8px}.side-nav button:nth-child(1) span:not(.nav-count)::after{content:'Catalogo';font-size:8px}.side-nav button:nth-child(3) span:not(.nav-count)::after{content:'Scambi';font-size:8px}}
 
 
-/* VINILI RESTYLE 2026 — identità crema/oro e layout mobile ispirato al mockup */
-:root{--bg:#10111b;--panel:#171823;--panel-soft:#20212c;--line:#343541;--muted:#9696a5;--text:#f5f2eb;--gold:#dfc28d;--gold-light:#f0d7a8;--green:#a9dfa0;--red:#e39b8e;color-scheme:dark}
-body{background:#10111b;color:var(--text)}
-.brand-mark{width:43px;height:43px;overflow:hidden;border:0;border-radius:10px;background:#f3e9d7;padding:3px;box-shadow:0 3px 14px #0005}
-.brand-mark img{width:100%;height:100%;object-fit:contain;display:block}
-.brand-lockup{letter-spacing:.22em}
-.sidebar{background:#141520;border-right:1px solid #2e303d}
-.main-content{background:#10111b}
-.topbar{background:#10111beF;border-bottom:1px solid #292b38;backdrop-filter:blur(14px)}
-.page-wrap{max-width:1500px}
-.album-grid{grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:17px}
-.album-card{background:#171820;border:1px solid #343541;border-radius:17px;overflow:hidden;box-shadow:0 8px 24px #0002;transition:transform .18s,border-color .18s,box-shadow .18s}
-.album-card:hover{transform:translateY(-3px);border-color:#8b795a;box-shadow:0 12px 30px #0004}
-.album-card-info{padding:13px 14px 11px}
-.album-card-info h3,.album-title-line h3{font-family:'Playfair Display',serif;font-weight:600;letter-spacing:-.01em}
-.album-genre{background:#dfc28d;color:#211d16;border-radius:7px;padding:4px 8px;font-weight:700}
-.search-box,.filter-panel,.stat-card,.catalog-meaning-note>div{background:#1b1c28;border-color:#343541}
-.primary-btn{background:#dfc28d;color:#1c1b20}.primary-btn:hover{background:#f0d7a8}
-.secondary-btn,.filter-btn{background:#242531;border-color:#414250}
-.modal-card{background:#171823;border-color:#3a3b48}
-input,textarea,select{background:#20212d!important;color:#f5f2eb!important;border-color:#414250!important}
+/* VINILI RESTYLING 2.0 — rifinitura mobile e desktop */
+.crumb{display:flex;align-items:center;gap:12px}
+.crumb-logo{display:block;width:92px;height:34px;object-fit:contain;object-position:left center}
+.crumb-slash{opacity:.45}
+.topbar{min-height:76px}
 @media(max-width:760px){
-  body{background:#10111b}
-  .app-shell{min-height:100dvh;padding-bottom:68px}
-  .sidebar{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:100%!important;height:64px!important;min-height:0!important;z-index:1000;display:flex!important;align-items:center;justify-content:center;padding:5px 8px calc(5px + env(safe-area-inset-bottom))!important;border-right:0;border-top:1px solid #343541;background:#151622f5!important;backdrop-filter:blur(18px)}
-  .sidebar>.brand-lockup,.sidebar>.side-label,.sidebar>.sidebar-note,.sidebar>.sidebar-user,.sidebar>.app-version{display:none!important}
-  .sidebar .side-nav{display:grid!important;grid-template-columns:repeat(4,1fr);gap:4px;width:100%;height:100%;margin:0!important}
-  .sidebar .side-nav button{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 2px!important;border:0!important;border-radius:10px!important;background:transparent!important;color:#a5a5b2!important;font-size:10px!important;min-width:0}
-  .sidebar .side-nav button.active{color:#dfc28d!important;background:#dfc28d16!important}
-  .sidebar .side-nav button svg{width:19px;height:19px}
-  .sidebar .side-nav button span:not(.nav-count){font-size:9px!important;display:block!important}
-  .sidebar .side-nav .nav-count{display:none!important}
-  .main-content{margin:0!important;width:100%!important;min-width:0!important}
-  .topbar{min-height:56px;padding:10px 15px!important;position:sticky;top:0;z-index:50}
-  .crumb{font-size:10px!important}.top-actions{font-size:0!important;gap:7px!important}.top-actions .avatar{font-size:13px!important}
-  .page-wrap{padding:17px 13px 26px!important}
-  .stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
-  .stat-card{padding:10px 8px!important;border-radius:12px!important;min-width:0}
-  .stat-card b{font-size:17px!important}.stat-card span{font-size:8px!important;line-height:1.3}
-  .catalog-head{gap:12px!important}
-  .catalog-tools{gap:8px!important}
-  .album-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
-  .album-card{border-radius:14px!important;min-width:0}
-  .album-card-info{padding:10px 10px 9px!important}
-  .album-card-info h3,.album-title-line h3{font-size:15px!important;line-height:1.2!important;white-space:normal!important}
-  .album-card-info>p,.album-card-info>span{font-size:10px!important}
-  .cover-image,.cover-placeholder{width:100%!important;aspect-ratio:1/1!important;object-fit:cover!important}
-  .album-card-foot{padding:0 9px 10px!important}
-  .filter-panel{overflow-x:auto;flex-wrap:nowrap!important;scrollbar-width:none}
-  .filter-panel::-webkit-scrollbar{display:none}
-  .filter-btn{white-space:nowrap;flex:0 0 auto}
+  .topbar{min-height:68px;padding:10px 16px}
+  .crumb{gap:9px;font-size:11px;letter-spacing:.13em}
+  .crumb-logo{width:76px;height:30px}
+  .top-actions{gap:6px}
+  .page-wrap{padding-top:20px}
+  .welcome-row{display:block;margin-bottom:20px}
+  .welcome-row h1{font-size:clamp(34px,8vw,48px);line-height:1.02;margin:10px 0 12px}
+  .page-subtitle{font-size:14px;line-height:1.5;max-width:36em}
+  .welcome-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+  .welcome-actions button{min-width:0;justify-content:center;padding:13px 9px;font-size:12px}
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:20px 0}
+  .stat-card{min-height:126px;padding:14px;border-radius:18px}
+  .stat-top{font-size:9px;letter-spacing:.09em}
+  .stat-value{font-size:34px;margin-top:18px}
+  .stat-foot{font-size:11px;line-height:1.35}
+  .catalog-meaning-note{display:none}
+  .catalog-section{margin-top:22px;border-radius:22px;overflow:hidden}
+  .catalog-head{padding:18px 15px;gap:12px}
+  .catalog-head h2{font-size:26px}
+  .catalog-head p{font-size:12px}
+  .catalog-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;width:100%}
+  .catalog-tools .search-box{grid-column:1/-1;width:100%;min-width:0}
+  .catalog-tools .filter-btn{min-width:0;padding:10px 12px}
+  .album-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:12px}
+  .album-card,.collection-album-card{min-width:0;border-radius:18px;overflow:hidden}
+  .cover-wrap{aspect-ratio:1/1}
+  .album-card-info{padding:10px 11px 12px}
+  .album-card-info h3{font-size:16px;line-height:1.15}
+  .album-card-info .artist-name{font-size:12px}
+  .collection-album-card .album-card-info{padding-bottom:12px}
+  .collection-card-actions{gap:7px}
 }
-@media(max-width:390px){.album-grid{gap:8px!important}.album-card-info{padding:8px!important}.album-card-info h3{font-size:13px!important}}
+@media(min-width:761px){
+  .crumb-logo{width:105px;height:38px}
+  .catalog-meaning-note{max-width:100%;gap:12px}
+}
+
+@media(max-width:760px){
+  .side-nav button span:not(.nav-count){font-size:9px!important;white-space:nowrap}
+  .side-nav button:nth-child(1) span:not(.nav-count)::after,
+  .side-nav button:nth-child(2) span:not(.nav-count)::after,
+  .side-nav button:nth-child(3) span:not(.nav-count)::after,
+  .side-nav button:nth-child(4) span:not(.nav-count)::after{content:none!important}
+}
