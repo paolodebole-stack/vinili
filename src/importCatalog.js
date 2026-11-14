@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
+import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
 
 const ALIASES = {
   artist: ['artista', 'artisti', 'interprete', 'gruppo', 'band', 'cantante', 'artist', 'artists', 'performer', 'musician'],
@@ -219,7 +220,7 @@ async function parseDocx(file) {
 
 async function parsePdf(file) {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
   const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
   const lines = [];
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
