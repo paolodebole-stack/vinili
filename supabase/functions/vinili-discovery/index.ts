@@ -7,6 +7,31 @@ const corsHeaders = {
 };
 const normalize = (value: unknown) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[’‘`]/g, "'").replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Discogs limits are IP-wide: 25 requests/min without a token and 60/min with one.
+// Serialize calls inside each warm Edge Function isolate and leave a safety margin.
+let discogsRequestQueue: Promise<void> = Promise.resolve();
+let lastDiscogsRequestAt = 0;
+async function fetchDiscogs(url: string, headers: Record<string, string>, authenticated: boolean) {
+  const minInterval = authenticated ? 1150 : 2600;
+  const request = discogsRequestQueue.then(async () => {
+    const wait = Math.max(0, lastDiscogsRequestAt + minInterval - Date.now());
+    if (wait > 0) await sleep(wait);
+    const response = await fetch(url, { headers });
+    lastDiscogsRequestAt = Date.now();
+    return response;
+  });
+  discogsRequestQueue = request.then(() => undefined, () => undefined);
+  return request;
+}
+class DiscogsRateLimitError extends Error {
+  retryAfter: string;
+  constructor(response: Response) {
+    super("Discogs ha raggiunto il limite di richieste. Attendi il tempo indicato prima di riprendere.");
+    this.name = "DiscogsRateLimitError";
+    this.retryAfter = response.headers.get("Retry-After") || "60";
+  }
+}
 function formatNames(release: any): string[] {
   const formats = Array.isArray(release?.formats) ? release.formats : [];
   return formats.flatMap((f: any) => [f?.name, ...(Array.isArray(f?.descriptions) ? f.descriptions : [])]).filter(Boolean).map((v: any) => String(v));
@@ -48,7 +73,7 @@ Deno.serve(async (req: Request) => {
     const results = Array.isArray(search?.results) ? search.results : [];
     if (!results.length) return new Response(JSON.stringify({ status: "not_found", vinyl: null, cd: null, digital: null, matches: [], message: "Nessuna pubblicazione trovata con questa ricerca." }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const checked = [];
-    const candidates = results.slice(0, 8);
+    const candidates = results.slice(0, 5);
     let checkedCount = 0;
     let verificationIncomplete = false;
     for (const candidate of candidates) {
@@ -63,12 +88,15 @@ Deno.serve(async (req: Request) => {
       const formats = formatNames(release);
       checked.push({ id: release.id, title: [release.artists_sort || artist, release.title].filter(Boolean).join(" - "), formats, year: release.year || candidate.year || "", country: release.country || candidate.country || "", labels: (release.labels || []).map((l: any) => [l.name, l.catno].filter(Boolean).join(" ")), url: release.uri || candidate.uri || `https://www.discogs.com/release/${release.id}`, classification: classify(formats) });
     }
-    const searchComplete = Number(search?.pagination?.pages || 1) <= 1 && results.length <= 8 && checkedCount === candidates.length && !verificationIncomplete;
+    const searchComplete = Number(search?.pagination?.pages || 1) <= 1 && results.length <= 5 && checkedCount === candidates.length && !verificationIncomplete;
     if (!checked.length) return new Response(JSON.stringify({ status: "needs_review", vinyl: null, cd: null, digital: null, matches: [], message: "Discogs ha restituito risultati, ma non è stato possibile confermare una corrispondenza esatta nella tracklist." }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const found = { vinyl: checked.some(r => r.classification.vinyl), cd: checked.some(r => r.classification.cd), digital: checked.some(r => r.classification.digital) };
     const result = { status: searchComplete ? "matched" : "needs_review", vinyl: found.vinyl ? true : searchComplete ? false : null, cd: found.cd ? true : searchComplete ? false : null, digital: found.digital ? true : searchComplete ? false : null, matches: checked.map(({ classification, ...rest }) => rest), message: searchComplete ? "" : "Sono state verificate solo alcune pubblicazioni: le categorie non confermate restano da verificare." };
     return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
+    if (error instanceof DiscogsRateLimitError) {
+      return new Response(JSON.stringify({ error: error.message, retryAfter: error.retryAfter }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": error.retryAfter } });
+    }
     return new Response(JSON.stringify({ error: error?.message || "Errore durante la ricerca Discogs." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
