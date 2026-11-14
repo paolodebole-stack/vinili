@@ -50,19 +50,20 @@ Deno.serve(async (req: Request) => {
     const checked = [];
     const candidates = results.slice(0, 8);
     let checkedCount = 0;
+    let verificationIncomplete = false;
     for (const candidate of candidates) {
-      if (!candidate?.id) continue;
+      if (!candidate?.id) { verificationIncomplete = true; continue; }
       if (checkedCount) await sleep(1100);
       const releaseResponse = await fetch(`https://api.discogs.com/releases/${candidate.id}`, { headers });
       if (releaseResponse.status === 429) throw new Error("Limite temporaneo Discogs raggiunto. Attendi qualche minuto e riprova.");
-      if (!releaseResponse.ok) { checkedCount++; continue; }
+      if (!releaseResponse.ok) { verificationIncomplete = true; continue; }
       const release = await releaseResponse.json();
       checkedCount++;
       if (!trackMatches(release?.tracklist, title) || !artistMatches(release, artist)) continue;
       const formats = formatNames(release);
       checked.push({ id: release.id, title: [release.artists_sort || artist, release.title].filter(Boolean).join(" - "), formats, year: release.year || candidate.year || "", country: release.country || candidate.country || "", labels: (release.labels || []).map((l: any) => [l.name, l.catno].filter(Boolean).join(" ")), url: release.uri || candidate.uri || `https://www.discogs.com/release/${release.id}`, classification: classify(formats) });
     }
-    const searchComplete = Number(search?.pagination?.pages || 1) <= 1 && results.length <= 8 && checkedCount >= candidates.length;
+    const searchComplete = Number(search?.pagination?.pages || 1) <= 1 && results.length <= 8 && checkedCount === candidates.length && !verificationIncomplete;
     if (!checked.length) return new Response(JSON.stringify({ status: "needs_review", vinyl: null, cd: null, digital: null, matches: [], message: "Discogs ha restituito risultati, ma non è stato possibile confermare una corrispondenza esatta nella tracklist." }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const found = { vinyl: checked.some(r => r.classification.vinyl), cd: checked.some(r => r.classification.cd), digital: checked.some(r => r.classification.digital) };
     const result = { status: searchComplete ? "matched" : "needs_review", vinyl: found.vinyl ? true : searchComplete ? false : null, cd: found.cd ? true : searchComplete ? false : null, digital: found.digital ? true : searchComplete ? false : null, matches: checked.map(({ classification, ...rest }) => rest), message: searchComplete ? "" : "Sono state verificate solo alcune pubblicazioni: le categorie non confermate restano da verificare." };
